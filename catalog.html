@@ -65,10 +65,19 @@ var FIREBASE_CONFIG = {
   appId: "1:714118686831:web:1ecf74960bb83ee280c59a",
   measurementId: "G-3EK40J0228"
 };
-var CATEGORY_LABELS = {
-  household:"Maishiy mashina", industrial:"Sanoat mashinasi", overlock:"Overlok", embroidery:"Kashtachi", coverstitch:"Trikotaj", other:"Boshqa mashina",
-  needle:"Igna", bobbin:"Shpulka/moynak", belt:"Kamar", motor:"Motor", foot:"Oyoqcha", pedal:"Pedal", plate:"Plastinka", bulb:"Lampochka", oil:"Moy", thread:"Ip", cable:"Kabel"
-};
+var PART_ICON_RULES = [
+  [/igna/i, "🪡"], [/\bip\b|shoyi/i, "🧵"], [/shpulka|moynak|bobbin/i, "🧶"],
+  [/kamar|tasma|belt/i, "🔗"], [/motor/i, "⚙️"], [/oyoqcha|presser|foot/i, "👣"],
+  [/pedal/i, "🦿"], [/plastinka|ignabar|plate/i, "🔲"], [/lampochka|lamp|bulb/i, "💡"],
+  [/moy|oil/i, "🛢️"], [/kabel|sim|cable/i, "🔌"], [/tugma|knop|button/i, "🔘"],
+  [/fermuar|zip/i, "🤐"]
+];
+function iconFor(source, cat){
+  if(source==="machine") return "🧵";
+  var s = String(cat||"");
+  for(var i=0;i<PART_ICON_RULES.length;i++){ if(PART_ICON_RULES[i][0].test(s)) return PART_ICON_RULES[i][1]; }
+  return "🧩";
+}
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 
 if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf("REPLACE_WITH")===0){
@@ -82,8 +91,9 @@ var items = []; // {source:'machine'|'part', ...}
 function render(){
   var q = document.getElementById("search").value.toLowerCase();
   var cats = {}; items.forEach(function(i){ cats[i.category]=true; });
-  var chipsHtml = ['<div class="chip'+(state.cat==="all"?" active":"")+'" data-c="all">Barchasi</div>'].concat(Object.keys(cats).map(function(c){
-    return '<div class="chip'+(state.cat===c?" active":"")+'" data-c="'+c+'">'+(CATEGORY_LABELS[c]||c)+'</div>';
+  var chipsHtml = ['<div class="chip'+(state.cat==="all"?" active":"")+'" data-c="all">🧩 Barchasi</div>'].concat(Object.keys(cats).sort().map(function(c){
+    var item = items.filter(function(i){return i.category===c;})[0];
+    return '<div class="chip'+(state.cat===c?" active":"")+'" data-c="'+esc(c)+'">'+iconFor(item?item.source:"", c)+' '+esc(c)+'</div>';
   })).join("");
   document.getElementById("chips").innerHTML = chipsHtml;
   Array.prototype.slice.call(document.querySelectorAll("[data-c]")).forEach(function(el){
@@ -99,14 +109,14 @@ function render(){
   if(!list.length){ grid.innerHTML='<div class="empty">Hech narsa topilmadi</div>'; return; }
   grid.innerHTML = list.map(function(i){
     var price = i.askPrice!=null ? '<div class="price">$'+Number(i.askPrice).toLocaleString("en-US")+'</div>' : '<div class="price ask">Narx so\'rov bilan</div>';
-    return '<div class="card"><div class="cat">'+(CATEGORY_LABELS[i.category]||i.category)+'</div><div class="name">'+esc(i.name)+(i.isNew?'<span class="badgeNew">Yangi</span>':'')+'</div>'+price+'</div>';
+    return '<div class="card"><div class="cat">'+iconFor(i.source,i.category)+' '+esc(i.category)+'</div><div class="name">'+esc(i.name)+(i.isNew?'<span class="badgeNew">Yangi</span>':'')+'</div>'+price+'</div>';
   }).join("");
 }
 var state = {cat:"all"};
 document.getElementById("search").addEventListener("input", render);
 
 db.collection("catalog_machines").onSnapshot(function(snap){
-  var machines = snap.docs.map(function(d){ var v=d.data(); return {id:d.id, source:"machine", category:v.type||"other", name:(v.brand||"")+" "+(v.model||""), askPrice:v.askPrice, isNew:v.isNew}; });
+  var machines = snap.docs.map(function(d){ var v=d.data(); return {id:d.id, source:"machine", category:v.brand||"Boshqa", name:(v.brand||"")+" "+(v.model||""), askPrice:v.askPrice, isNew:v.isNew}; });
   items = items.filter(function(i){return i.source!=="machine";}).concat(machines);
   render();
 });

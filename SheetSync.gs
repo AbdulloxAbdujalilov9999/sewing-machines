@@ -15,7 +15,7 @@
 var SHEET_DEFS = {
   machines: {
     name: "Mashinalar",
-    cols: ["ID","Brend","Turi","Model","Seriya","Holati","Kimdan olindi","Uning raqami",
+    cols: ["ID","Brend","Model","Seriya","Holati","Kimdan olindi","Uning raqami",
            "Sotib olingan sana","Sotib olingan narx","Kimga sotildi","Xaridor raqami",
            "Sotilgan sana","Sotilgan narx","Izoh"]
   },
@@ -83,7 +83,7 @@ function readAll(kind) {
 function rowFromData_(kind, id, data) {
   data = data || {};
   if (kind === "machines") {
-    return [id, data.brand||"", data.type||"", data.model||"", data.serial||"",
+    return [id, data.brand||"", data.model||"", data.serial||"",
             data.status||"", data.source||"", data.sourcePhone||"",
             data.buyDate||"", data.buyPrice!=null?data.buyPrice:"",
             data.buyer||"", data.buyerPhone||"",

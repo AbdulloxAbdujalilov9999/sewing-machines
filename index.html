@@ -296,22 +296,10 @@ tbody tr:hover{background:var(--surface2)}
             <input list="brandList" id="f_brand" placeholder="Masalan: Juki" required>
             <datalist id="brandList"></datalist>
           </div>
-          <div class="field"><label>Turi</label>
-            <select id="f_type">
-              <option value="household">Maishiy (uy)</option>
-              <option value="industrial">Sanoat</option>
-              <option value="overlock">Overlok</option>
-              <option value="embroidery">Kashtachi</option>
-              <option value="coverstitch">Trikotaj (coverstitch)</option>
-              <option value="other">Boshqa</option>
-            </select>
-          </div>
-        </div>
-        <div class="fieldRow">
           <div class="field"><label>Model</label><input id="f_model" placeholder="Masalan: DDL-8700" required></div>
-          <div class="field"><label>Seriya raqami</label>
-            <div class="withScan"><input id="f_serial" placeholder="Agar mavjud bo'lsa"><button type="button" class="scanBtn" data-scan="f_serial">📷</button></div>
-          </div>
+        </div>
+        <div class="field"><label>Seriya raqami</label>
+          <div class="withScan"><input id="f_serial" placeholder="Agar mavjud bo'lsa"><button type="button" class="scanBtn" data-scan="f_serial">📷</button></div>
         </div>
         <div style="display:flex; gap:20px; margin:4px 0 6px">
           <label class="checkRow" style="margin:0"><input type="checkbox" id="f_hasBox"> Qutisi bor</label>
@@ -368,7 +356,7 @@ tbody tr:hover{background:var(--surface2)}
 <!-- ============ QUICK SELL (machine) MODAL ============ -->
 <div class="overlay hidden" id="soldModal">
   <div class="modal sm">
-    <div class="modalHead"><h3>Mashinani sotish</h3><button class="closeX" data-close="soldModal">✕</button></div>
+    <div class="modalHead"><h3>💰 Mashinani sotish</h3><button class="closeX" data-close="soldModal">✕</button></div>
     <form id="soldForm">
       <div class="modalBody">
         <div class="field"><label>Xaridor</label><input id="s_buyer" required></div>
@@ -393,20 +381,8 @@ tbody tr:hover{background:var(--surface2)}
         <div class="fieldRow">
           <div class="field"><label>Nomi</label><input id="p_name" placeholder="Masalan: Igna DBx1 №14" required></div>
           <div class="field"><label>Kategoriya</label>
-            <select id="p_category">
-              <option value="needle">Igna</option>
-              <option value="bobbin">Shpulka / moynak</option>
-              <option value="belt">Kamar (tasma)</option>
-              <option value="motor">Motor</option>
-              <option value="foot">Oyoqcha (presser foot)</option>
-              <option value="pedal">Pedal</option>
-              <option value="plate">Ignabar / plastinka</option>
-              <option value="bulb">Lampochka</option>
-              <option value="oil">Moy / moylash vositasi</option>
-              <option value="thread">Ip</option>
-              <option value="cable">Kabel / simlar</option>
-              <option value="other">Boshqa ehtiyot qism</option>
-            </select>
+            <input list="partCategoryList" id="p_category" placeholder="Masalan: Igna" required>
+            <datalist id="partCategoryList"></datalist>
           </div>
         </div>
         <div class="field"><label>Mosligi (ixtiyoriy)</label><input id="p_compat" placeholder="Masalan: Juki DDL-8700, Brother GS Series"></div>
@@ -439,7 +415,7 @@ tbody tr:hover{background:var(--surface2)}
 <!-- ============ SELL PART MODAL ============ -->
 <div class="overlay hidden" id="sellPartModal">
   <div class="modal sm">
-    <div class="modalHead"><h3>Ehtiyot qismni sotish</h3><button class="closeX" data-close="sellPartModal">✕</button></div>
+    <div class="modalHead"><h3>💰 Ehtiyot qismni sotish</h3><button class="closeX" data-close="sellPartModal">✕</button></div>
     <form id="sellPartForm">
       <div class="modalBody">
         <div class="field"><label id="sp_available">Mavjud: —</label></div>
@@ -499,8 +475,20 @@ var DEFAULT_LOW_STOCK = 5;
 var KNOWN_BRANDS = ["Juki","Brother","Singer","Janome","Jack","Typical","Zoje","Pfaff","Bernina","Toyota","Elna","Necchi","Siruba","Pegasus","Yamata"];
 
 var MACHINE_STATUS = {stock:"Omborda", lent:"Band", lost:"Yo'qolgan", sold:"Sotilgan"};
-var MACHINE_TYPE = {household:"Maishiy", industrial:"Sanoat", overlock:"Overlok", embroidery:"Kashtachi", coverstitch:"Trikotaj", other:"Boshqa"};
-var PART_CATEGORY = {needle:"Igna", bobbin:"Shpulka/moynak", belt:"Kamar", motor:"Motor", foot:"Oyoqcha", pedal:"Pedal", plate:"Plastinka", bulb:"Lampochka", oil:"Moy", thread:"Ip", cable:"Kabel", other:"Boshqa"};
+var MACHINE_STATUS_ICON = {stock:"📦", lent:"🤝", lost:"❗", sold:"✅"};
+var PART_CATEGORY_SUGGESTIONS = ["Igna","Ip","Shpulka/moynak","Kamar (tasma)","Motor","Oyoqcha (presser foot)","Pedal","Ignabar/plastinka","Lampochka","Moy/moylash vositasi","Kabel/simlar","Tugma","Fermuar"];
+var PART_ICON_RULES = [
+  [/igna/i, "🪡"], [/\bip\b|shoyi/i, "🧵"], [/shpulka|moynak|bobbin/i, "🧶"],
+  [/kamar|tasma|belt/i, "🔗"], [/motor/i, "⚙️"], [/oyoqcha|presser|foot/i, "👣"],
+  [/pedal/i, "🦿"], [/plastinka|ignabar|plate/i, "🔲"], [/lampochka|lamp|bulb/i, "💡"],
+  [/moy|oil/i, "🛢️"], [/kabel|sim|cable/i, "🔌"], [/tugma|knop|button/i, "🔘"],
+  [/fermuar|zip/i, "🤐"]
+];
+function iconForCategory(cat){
+  var s = String(cat||"");
+  for(var i=0;i<PART_ICON_RULES.length;i++){ if(PART_ICON_RULES[i][0].test(s)) return PART_ICON_RULES[i][1]; }
+  return "🧩";
+}
 
 /* ============================================================
    STATE
@@ -515,7 +503,7 @@ var state = {
   sheetSyncUrl: "",
   financeUnlocked: false,
   ui: {
-    machines: {search:"", brand:"all", type:"all", status:"all"},
+    machines: {search:"", brand:"all", status:"all"},
     parts: {search:"", category:"all", lowOnly:false}
   },
   editingMachineId: null,
@@ -752,22 +740,22 @@ function renderDashboard(){
 
   return ''+
   '<div class="kpiGrid">'+
-    '<div class="kpi"><div class="lbl">Jami mashinalar</div><div class="val">'+ms.length+'</div></div>'+
-    '<div class="kpi success"><div class="lbl">Omborda</div><div class="val">'+inStock+'</div></div>'+
-    '<div class="kpi warn"><div class="lbl">Band</div><div class="val">'+lent+'</div></div>'+
-    '<div class="kpi danger"><div class="lbl">Yo\'qolgan</div><div class="val">'+lost+'</div></div>'+
-    '<div class="kpi"><div class="lbl">Sotilgan</div><div class="val">'+sold+'</div></div>'+
-    '<div class="kpi'+(lowParts.length?" danger":"")+'"><div class="lbl">Qism zahirasi</div><div class="val">'+totalPartsQty+'</div><div class="sub">'+lowParts.length+' nomda kam qoldiq</div></div>'+
+    '<div class="kpi"><div class="lbl">🧵 Jami mashinalar</div><div class="val">'+ms.length+'</div></div>'+
+    '<div class="kpi success"><div class="lbl">📦 Omborda</div><div class="val">'+inStock+'</div></div>'+
+    '<div class="kpi warn"><div class="lbl">🤝 Band</div><div class="val">'+lent+'</div></div>'+
+    '<div class="kpi danger"><div class="lbl">❗ Yo\'qolgan</div><div class="val">'+lost+'</div></div>'+
+    '<div class="kpi"><div class="lbl">✅ Sotilgan</div><div class="val">'+sold+'</div></div>'+
+    '<div class="kpi'+(lowParts.length?" danger":"")+'"><div class="lbl">🧩 Qism zahirasi</div><div class="val">'+totalPartsQty+'</div><div class="sub">'+lowParts.length+' nomda kam qoldiq</div></div>'+
   '</div>'+
   '<div class="grid2">'+
-    '<div class="card"><h3>Brendlar bo\'yicha</h3><div class="kpiGrid">'+(brandCards||'<div style="color:var(--muted)">Ma\'lumot yo\'q</div>')+'</div></div>'+
-    '<div class="card"><h3>So\'nggi 6 oyda sotib olingan mashinalar</h3><div class="chartRow">'+chartHtml+'</div></div>'+
+    '<div class="card"><h3>🏷️ Brendlar bo\'yicha</h3><div class="kpiGrid">'+(brandCards||'<div style="color:var(--muted)">Ma\'lumot yo\'q</div>')+'</div></div>'+
+    '<div class="card"><h3>📈 So\'nggi 6 oyda sotib olingan mashinalar</h3><div class="chartRow">'+chartHtml+'</div></div>'+
   '</div>'+
   '<div class="grid2">'+
-    '<div class="card"><h3>So\'nggi qo\'shilganlar</h3><ul class="rankList">'+recent+'</ul></div>'+
+    '<div class="card"><h3>🆕 So\'nggi qo\'shilganlar</h3><ul class="rankList">'+recent+'</ul></div>'+
     '<div class="card"><h3>⚠️ Kam qolgan ehtiyot qismlar</h3><ul class="rankList">'+lowList+'</ul></div>'+
   '</div>'+
-  '<div class="card"><h3>Eslatmalar</h3><textarea id="notesBox" rows="4" style="width:100%; background:var(--surface2); border:1px solid var(--border2); color:var(--text); border-radius:8px; padding:10px">'+esc(state.notes)+'</textarea>'+
+  '<div class="card"><h3>📝 Eslatmalar</h3><textarea id="notesBox" rows="4" style="width:100%; background:var(--surface2); border:1px solid var(--border2); color:var(--text); border-radius:8px; padding:10px">'+esc(state.notes)+'</textarea>'+
     '<div style="margin-top:8px; text-align:right"><button class="btn sm primary" id="saveNotesBtn">Saqlash</button></div></div>';
 }
 function wireDashboard(){
@@ -788,7 +776,6 @@ function filteredMachines(onlyNew){
   return state.machines.filter(function(m){
     if(onlyNew && !m.isNew) return false;
     if(f.brand!=="all" && m.brand!==f.brand) return false;
-    if(f.type!=="all" && m.type!==f.type) return false;
     if(f.status!=="all" && m.status!==f.status) return false;
     if(q){
       var hay=((m.brand||"")+" "+(m.model||"")+" "+(m.serial||"")+" "+(m.source||"")+" "+(m.buyer||"")).toLowerCase();
@@ -801,15 +788,11 @@ function renderMachinesView(onlyNew){
   var list = filteredMachines(onlyNew);
   var brands = brandList();
   var f = state.ui.machines;
-  var brandChips = ['<div class="chip'+(f.brand==="all"?" active":"")+'" data-fbrand="all">Barchasi</div>'].concat(brands.map(function(b){
+  var brandChips = ['<div class="chip'+(f.brand==="all"?" active":"")+'" data-fbrand="all">🧵 Barchasi</div>'].concat(brands.map(function(b){
     return '<div class="chip'+(f.brand===b?" active":"")+'" data-fbrand="'+esc(b)+'">'+esc(b)+'</div>';
   })).join("");
-  var typeChips = ['all'].concat(Object.keys(MACHINE_TYPE)).map(function(t){
-    var label = t==="all" ? "Barcha turlar" : MACHINE_TYPE[t];
-    return '<div class="chip'+(f.type===t?" active":"")+'" data-ftype="'+t+'">'+label+'</div>';
-  }).join("");
   var statusChips = ['all'].concat(Object.keys(MACHINE_STATUS)).map(function(s){
-    var label = s==="all" ? "Hammasi" : MACHINE_STATUS[s];
+    var label = s==="all" ? "Hammasi" : MACHINE_STATUS_ICON[s]+" "+MACHINE_STATUS[s];
     return '<div class="chip'+(f.status===s?" active":"")+'" data-fstatus="'+s+'">'+label+'</div>';
   }).join("");
 
@@ -823,8 +806,8 @@ function renderMachinesView(onlyNew){
     var sold = list.filter(function(m){return m.status==="sold";});
     var out=[];
     main.forEach(function(m){ out.push(machineRow(m)); });
-    if(f.status==="all" && lent.length){ out.push('<tr class="groupDivider"><td colspan="7">Band ('+lent.length+' ta)</td></tr>'); lent.forEach(function(m){ out.push(machineRow(m)); }); }
-    if(f.status==="all" && sold.length){ out.push('<tr class="groupDivider"><td colspan="7">Sotilgan ('+sold.length+' ta)</td></tr>'); sold.forEach(function(m){ out.push(machineRow(m)); }); }
+    if(f.status==="all" && lent.length){ out.push('<tr class="groupDivider"><td colspan="7">🤝 Band ('+lent.length+' ta)</td></tr>'); lent.forEach(function(m){ out.push(machineRow(m)); }); }
+    if(f.status==="all" && sold.length){ out.push('<tr class="groupDivider"><td colspan="7">✅ Sotilgan ('+sold.length+' ta)</td></tr>'); sold.forEach(function(m){ out.push(machineRow(m)); }); }
     if(f.status!=="all"){ out=[]; list.forEach(function(m){ out.push(machineRow(m)); }); }
     rowsHtml = out.join("");
   }
@@ -834,7 +817,6 @@ function renderMachinesView(onlyNew){
     '<input class="search field" style="margin:0" id="machineSearch" placeholder="Qidirish: brend, model, seriya, mijoz..." value="'+esc(f.search)+'">'+
   '</div>'+
   '<div class="chips" style="margin-bottom:8px">'+brandChips+'</div>'+
-  '<div class="chips" style="margin-bottom:8px">'+typeChips+'</div>'+
   '<div class="chips" style="margin-bottom:14px">'+statusChips+'</div>'+
   '<div class="tableWrap"><table><thead><tr>'+
     '<th>#</th><th>Model</th><th>Seriya</th><th>Narx</th><th>Holati</th><th>Sotib olindi</th><th>Kimga sotildi</th><th></th>'+
@@ -844,17 +826,17 @@ function machineRow(m, idx){
   var price = m.status==="sold" ? fmtMoney(m.sellPrice) : fmtMoney(m.askPrice!=null?m.askPrice:m.buyPrice);
   var buyerCell = m.buyer ? esc(m.buyer)+(m.returnedAt?' <span class="tagReturned">qaytarilgan</span>':'')+'<div class="rowSub">'+fmtDate(m.sellDate)+'</div>' : "—";
   var actions = '<div class="rowActions">'+
-    '<button class="btn sm" data-edit="'+m.id+'">Tahrir</button>'+
-    (m.status!=="sold" ? '<button class="btn sm success" data-sold="'+m.id+'">Sotildi</button>' : '')+
-    (m.status==="stock" ? '<button class="btn sm" data-band="'+m.id+'">Band</button>' : '')+
-    (m.status==="sold" ? '<button class="btn sm" data-return="'+m.id+'">Qaytarib olindi</button>' : '')+
+    '<button class="btn sm" data-edit="'+m.id+'">✏️ Tahrir</button>'+
+    (m.status!=="sold" ? '<button class="btn sm success" data-sold="'+m.id+'">💰 Sotildi</button>' : '')+
+    (m.status==="stock" ? '<button class="btn sm" data-band="'+m.id+'">🤝 Band</button>' : '')+
+    (m.status==="sold" ? '<button class="btn sm" data-return="'+m.id+'">↩️ Qaytarib olindi</button>' : '')+
   '</div>';
   return '<tr>'+
     '<td class="mono" style="color:var(--muted)">'+(idx!=null?idx:"")+'</td>'+
-    '<td><b>'+esc(m.brand||"")+' '+esc(m.model||"")+'</b>'+(m.isNew?'<span class="tagNew">Yangi</span>':'')+'<div class="rowSub">'+(MACHINE_TYPE[m.type]||"")+'</div></td>'+
+    '<td>🧵 <b>'+esc(m.brand||"")+' '+esc(m.model||"")+'</b>'+(m.isNew?'<span class="tagNew">Yangi</span>':'')+'</td>'+
     '<td class="mono">'+esc(m.serial||"—")+'</td>'+
     '<td class="mono">'+price+'</td>'+
-    '<td><span class="badge '+(m.status==="lent"?"lent":m.status)+'">'+MACHINE_STATUS[m.status]+'</span></td>'+
+    '<td><span class="badge '+(m.status==="lent"?"lent":m.status)+'">'+MACHINE_STATUS_ICON[m.status]+' '+MACHINE_STATUS[m.status]+'</span></td>'+
     '<td>'+esc(m.source||"—")+'<div class="rowSub">'+fmtDate(m.buyDate)+'</div></td>'+
     '<td>'+buyerCell+'</td>'+
     '<td>'+actions+'</td>'+
@@ -863,7 +845,6 @@ function machineRow(m, idx){
 function wireMachinesView(){
   $("machineSearch") && $("machineSearch").addEventListener("input", function(){ state.ui.machines.search=this.value; render(); });
   qsa("[data-fbrand]").forEach(function(el){ el.addEventListener("click", function(){ state.ui.machines.brand=el.getAttribute("data-fbrand"); render(); }); });
-  qsa("[data-ftype]").forEach(function(el){ el.addEventListener("click", function(){ state.ui.machines.type=el.getAttribute("data-ftype"); render(); }); });
   qsa("[data-fstatus]").forEach(function(el){ el.addEventListener("click", function(){ state.ui.machines.status=el.getAttribute("data-fstatus"); render(); }); });
   qsa("[data-edit]").forEach(function(el){ el.addEventListener("click", function(){ openMachineModal(el.getAttribute("data-edit")); }); });
   qsa("[data-sold]").forEach(function(el){ el.addEventListener("click", function(){ openSoldModal(el.getAttribute("data-sold")); }); });
@@ -878,7 +859,6 @@ function openMachineModal(id){
   $("brandList").innerHTML = KNOWN_BRANDS.map(function(b){ return '<option value="'+esc(b)+'">'; }).join("");
   $("machineModalTitle").textContent = m ? "Mashinani tahrirlash" : "Yangi mashina";
   $("f_brand").value = m? m.brand||"" : "";
-  $("f_type").value = m? m.type||"household" : "household";
   $("f_model").value = m? m.model||"" : "";
   $("f_serial").value = m? m.serial||"" : "";
   $("f_hasBox").checked = m? !!m.hasBox : false;
@@ -911,7 +891,6 @@ $("machineForm").addEventListener("submit", function(e){
   var status = $("f_status").value;
   var data = {
     brand: $("f_brand").value.trim(),
-    type: $("f_type").value,
     model: $("f_model").value.trim(),
     serial: $("f_serial").value.trim(),
     hasBox: $("f_hasBox").checked,
@@ -994,6 +973,11 @@ function confirmReturn(id){
 /* ============================================================
    PARTS VIEW
    ============================================================ */
+function categoryList(){
+  var set={};
+  state.parts.forEach(function(p){ if(p.category) set[p.category]=true; });
+  return Object.keys(set).sort();
+}
 function filteredParts(){
   var f = state.ui.parts, q=f.search.toLowerCase();
   return state.parts.filter(function(p){
@@ -1009,22 +993,22 @@ function filteredParts(){
 function renderPartsView(){
   var list = filteredParts();
   var f = state.ui.parts;
-  var catChips = ['all'].concat(Object.keys(PART_CATEGORY)).map(function(c){
-    var label = c==="all" ? "Barchasi" : PART_CATEGORY[c];
-    return '<div class="chip'+(f.category===c?" active":"")+'" data-fcat="'+c+'">'+label+'</div>';
-  }).join("");
+  var cats = categoryList();
+  var catChips = ['<div class="chip'+(f.category==="all"?" active":"")+'" data-fcat="all">🧩 Barchasi</div>'].concat(cats.map(function(c){
+    return '<div class="chip'+(f.category===c?" active":"")+'" data-fcat="'+esc(c)+'">'+iconForCategory(c)+' '+esc(c)+'</div>';
+  })).join("");
   var lowCount = state.parts.filter(function(p){ return Number(p.qty)<=(p.lowAt!=null?Number(p.lowAt):DEFAULT_LOW_STOCK); }).length;
 
   var rows = list.map(function(p){
     var low = Number(p.qty) <= (p.lowAt!=null?Number(p.lowAt):DEFAULT_LOW_STOCK);
     return '<tr>'+
       '<td><b>'+esc(p.name)+'</b>'+(p.compat?'<div class="rowSub">'+esc(p.compat)+'</div>':'')+'</td>'+
-      '<td>'+(PART_CATEGORY[p.category]||"—")+'</td>'+
+      '<td>'+iconForCategory(p.category)+' '+esc(p.category||"—")+'</td>'+
       '<td class="mono">'+esc(p.sku||"—")+'</td>'+
       '<td><span class="badge '+(low?"low":"ok")+'">'+p.qty+' dona</span></td>'+
       '<td class="mono">'+fmtMoney(p.buyPrice)+'</td>'+
       '<td class="mono">'+fmtMoney(p.askPrice)+'</td>'+
-      '<td><div class="rowActions"><button class="btn sm" data-pedit="'+p.id+'">Tahrir</button><button class="btn sm success" data-psell="'+p.id+'">Sotish</button></div></td>'+
+      '<td><div class="rowActions"><button class="btn sm" data-pedit="'+p.id+'">✏️ Tahrir</button><button class="btn sm success" data-psell="'+p.id+'">💰 Sotish</button></div></td>'+
     '</tr>';
   }).join("") || '<tr><td colspan="7"><div class="emptyState"><div class="big">⚙️</div>Hech narsa topilmadi</div></td></tr>';
 
@@ -1047,9 +1031,11 @@ function wirePartsView(){
 function openPartModal(id){
   state.editingPartId=id;
   var p = id ? state.parts.find(function(x){return x.id===id;}) : null;
+  var historyCats = PART_CATEGORY_SUGGESTIONS.concat(categoryList()).filter(function(c,i,arr){ return arr.indexOf(c)===i; });
+  $("partCategoryList").innerHTML = historyCats.map(function(c){ return '<option value="'+esc(c)+'">'; }).join("");
   $("partModalTitle").textContent = p ? "Ehtiyot qismni tahrirlash" : "Yangi ehtiyot qism";
   $("p_name").value = p? p.name||"" : "";
-  $("p_category").value = p? p.category||"needle" : "needle";
+  $("p_category").value = p? p.category||"" : "";
   $("p_compat").value = p? p.compat||"" : "";
   $("p_sku").value = p? p.sku||"" : "";
   $("p_supplier").value = p? p.supplier||"" : "";
@@ -1067,7 +1053,7 @@ $("partForm").addEventListener("submit", function(e){
   var id = state.editingPartId;
   var now = new Date().toISOString();
   var data = {
-    name:$("p_name").value.trim(), category:$("p_category").value, compat:$("p_compat").value.trim(),
+    name:$("p_name").value.trim(), category:$("p_category").value.trim(), compat:$("p_compat").value.trim(),
     sku:$("p_sku").value.trim(), supplier:$("p_supplier").value.trim(),
     qty: num($("p_qty").value)||0, lowAt: num($("p_lowAt").value),
     buyPrice: num($("p_buyPrice").value), askPrice: num($("p_askPrice").value),
@@ -1129,7 +1115,7 @@ $("sellPartForm").addEventListener("submit", function(e){
    ============================================================ */
 function syncMachineToCatalog(id, data){
   if(!data.showCatalog || data.status!=="stock"){ catalogMachinesCol.doc(id).delete().catch(function(){}); return; }
-  catalogMachinesCol.doc(id).set({brand:data.brand||"", type:data.type||"", model:data.model||"", askPrice:data.askPrice!=null?data.askPrice:null, isNew: !!data.isNew, updatedAt:new Date().toISOString()}).catch(function(){});
+  catalogMachinesCol.doc(id).set({brand:data.brand||"", model:data.model||"", askPrice:data.askPrice!=null?data.askPrice:null, isNew: !!data.isNew, updatedAt:new Date().toISOString()}).catch(function(){});
 }
 function syncPartToCatalog(id, data){
   if(!data.showCatalog || Number(data.qty)<=0){ catalogPartsCol.doc(id).delete().catch(function(){}); return; }
@@ -1177,14 +1163,14 @@ function renderFinance(){
     '<div class="kpi danger"><div class="lbl">Yo\'qolgan zarar</div><div class="val">'+fmtMoney(lostValue)+'</div></div>'+
   '</div>'+
   '<div class="grid2">'+
-    '<div class="card"><h3>Mashinalar bo\'yicha foyda</h3><div>Foyda: <b class="mono">'+fmtMoney(machineProfit)+'</b></div><div>Sotuv: <b class="mono">'+fmtMoney(machineRevenue)+'</b></div><div style="color:var(--muted); font-size:12px; margin-top:6px">'+soldMachines.length+' ta mashina sotilgan</div></div>'+
-    '<div class="card"><h3>Ehtiyot qismlar bo\'yicha foyda</h3><div>Foyda: <b class="mono">'+fmtMoney(partsProfit)+'</b></div><div>Sotuv: <b class="mono">'+fmtMoney(partsRevenue)+'</b></div><div style="color:var(--muted); font-size:12px; margin-top:6px">'+state.partSales.length+' ta sotuv tranzaksiyasi</div></div>'+
+    '<div class="card"><h3>🧵 Mashinalar bo\'yicha foyda</h3><div>Foyda: <b class="mono">'+fmtMoney(machineProfit)+'</b></div><div>Sotuv: <b class="mono">'+fmtMoney(machineRevenue)+'</b></div><div style="color:var(--muted); font-size:12px; margin-top:6px">'+soldMachines.length+' ta mashina sotilgan</div></div>'+
+    '<div class="card"><h3>🧩 Ehtiyot qismlar bo\'yicha foyda</h3><div>Foyda: <b class="mono">'+fmtMoney(partsProfit)+'</b></div><div>Sotuv: <b class="mono">'+fmtMoney(partsRevenue)+'</b></div><div style="color:var(--muted); font-size:12px; margin-top:6px">'+state.partSales.length+' ta sotuv tranzaksiyasi</div></div>'+
   '</div>'+
   '<div class="grid2">'+
-    '<div class="card"><h3>Kimlardan ko\'p sotib olasiz</h3><ul class="rankList">'+(topSuppliers.map(function(s,i){return '<li><span class="n">'+(i+1)+'.</span><span>'+esc(s)+'</span><span class="mono">'+suppliers[s]+'</span></li>';}).join("")||'<li style="color:var(--muted)">Ma\'lumot yo\'q</li>')+'</ul></div>'+
-    '<div class="card"><h3>Kimlar ko\'p sotib oladi</h3><ul class="rankList">'+(topBuyers.map(function(s,i){return '<li><span class="n">'+(i+1)+'.</span><span>'+esc(s)+'</span><span class="mono">'+buyers[s]+'</span></li>';}).join("")||'<li style="color:var(--muted)">Ma\'lumot yo\'q</li>')+'</ul></div>'+
+    '<div class="card"><h3>🚚 Kimlardan ko\'p sotib olasiz</h3><ul class="rankList">'+(topSuppliers.map(function(s,i){return '<li><span class="n">'+(i+1)+'.</span><span>'+esc(s)+'</span><span class="mono">'+suppliers[s]+'</span></li>';}).join("")||'<li style="color:var(--muted)">Ma\'lumot yo\'q</li>')+'</ul></div>'+
+    '<div class="card"><h3>🛍️ Kimlar ko\'p sotib oladi</h3><ul class="rankList">'+(topBuyers.map(function(s,i){return '<li><span class="n">'+(i+1)+'.</span><span>'+esc(s)+'</span><span class="mono">'+buyers[s]+'</span></li>';}).join("")||'<li style="color:var(--muted)">Ma\'lumot yo\'q</li>')+'</ul></div>'+
   '</div>'+
-  '<div class="card"><h3>Hisobotni yuklab olish</h3><button class="btn" id="exportBtn">📥 Excel ga eksport</button></div>';
+  '<div class="card"><h3>📊 Hisobotni yuklab olish</h3><button class="btn" id="exportBtn">📥 Excel ga eksport</button></div>';
 }
 function wireFinance(){
   var unlockBtn = $("financeUnlockBtn");
@@ -1199,11 +1185,11 @@ function wireFinance(){
     exportBtn.addEventListener("click", function(){
       var wb = XLSX.utils.book_new();
       var mSheet = XLSX.utils.json_to_sheet(state.machines.map(function(m){
-        return {Brend:m.brand, Model:m.model, Turi:MACHINE_TYPE[m.type], Seriya:m.serial, Holati:MACHINE_STATUS[m.status], SotibOlingan:m.buyPrice, Sotilgan:m.sellPrice, SotibOlinganSana:m.buyDate, SotilganSana:m.sellDate, Kimdan:m.source, Kimga:m.buyer};
+        return {Brend:m.brand, Model:m.model, Seriya:m.serial, Holati:MACHINE_STATUS[m.status], SotibOlingan:m.buyPrice, Sotilgan:m.sellPrice, SotibOlinganSana:m.buyDate, SotilganSana:m.sellDate, Kimdan:m.source, Kimga:m.buyer};
       }));
       XLSX.utils.book_append_sheet(wb, mSheet, "Mashinalar");
       var pSheet = XLSX.utils.json_to_sheet(state.parts.map(function(p){
-        return {Nomi:p.name, Kategoriya:PART_CATEGORY[p.category], SKU:p.sku, Miqdor:p.qty, Tannarx:p.buyPrice, SotishNarxi:p.askPrice};
+        return {Nomi:p.name, Kategoriya:p.category, SKU:p.sku, Miqdor:p.qty, Tannarx:p.buyPrice, SotishNarxi:p.askPrice};
       }));
       XLSX.utils.book_append_sheet(wb, pSheet, "Ehtiyot qismlar");
       XLSX.writeFile(wb, "vip-tikuv-hisobot-"+todayStr()+".xlsx");
@@ -1217,12 +1203,12 @@ function wireFinance(){
 function renderSettings(){
   return ''+
   '<div class="card" style="max-width:520px">'+
-    '<h3>Google Sheet sinxronlash (ixtiyoriy)</h3>'+
+    '<h3>🔄 Google Sheet sinxronlash (ixtiyoriy)</h3>'+
     '<div class="field"><label>Apps Script Web App URL</label><input id="sheetUrlInput" value="'+esc(state.sheetSyncUrl)+'" placeholder="https://script.google.com/macros/s/.../exec"></div>'+
     '<button class="btn primary" id="saveSheetUrlBtn">Saqlash</button>'+
     '<p style="color:var(--muted); font-size:12.5px; margin-top:12px">SheetSync.gs faylini Google Apps Script\'ga joylab, Web App sifatida deploy qiling va shu yerga exec URL\'ni kiriting. Bu ixtiyoriy — platforma shu bilan ham, shusiz ham ishlaydi.</p>'+
   '</div>'+
-  '<div class="card" style="max-width:520px"><h3>Ommaviy katalog</h3><p style="color:var(--muted); font-size:13px">Mijozlar uchun faqat ko\'rish mumkin bo\'lgan sahifa: <code class="inline">catalog.html</code>. Narxlar faqat "Mijozlar katalogi" belgisi qo\'yilgan va omborda bor mahsulotlar uchun ko\'rsatiladi.</p></div>';
+  '<div class="card" style="max-width:520px"><h3>🛒 Ommaviy katalog</h3><p style="color:var(--muted); font-size:13px">Mijozlar uchun faqat ko\'rish mumkin bo\'lgan sahifa: <code class="inline">catalog.html</code>. Narxlar faqat "Mijozlar katalogi" belgisi qo\'yilgan va omborda bor mahsulotlar uchun ko\'rsatiladi.</p></div>';
 }
 function wireSettings(){
   var btn = $("saveSheetUrlBtn");
