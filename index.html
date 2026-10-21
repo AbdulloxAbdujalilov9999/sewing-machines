@@ -1,0 +1,1282 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>VIP Tikuv — Boshqaruv</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0a0f1c; --surface:#121a2b; --surface2:#182338; --surface3:#1f2c45;
+  --border:#263355; --border2:#324168;
+  --text:#eaf0fb; --muted:#8b97b8; --muted2:#5f6c8d;
+  --accent:#4f7cff; --accent2:#2f5ce0; --accent-dim:#1c2a52;
+  --gold:#e8b23d; --success:#2fbf71; --success-dim:#123323;
+  --danger:#ef5366; --danger-dim:#3a1620; --warn:#f0a63a; --warn-dim:#3a2a10;
+  --radius:12px; --radius-sm:8px;
+  --shadow:0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Manrope',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+.mono{font-family:'IBM Plex Mono',monospace}
+a{color:var(--accent)}
+.hidden{display:none !important}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+
+/* ---------- Setup / Login ---------- */
+#setupScreen,#loginScreen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+}
+.authCard{
+  width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:32px; box-shadow:var(--shadow);
+}
+.authCard h1{font-size:20px; margin:0 0 4px; display:flex; align-items:center; gap:10px}
+.authCard .sub{color:var(--muted); font-size:13px; margin-bottom:24px; line-height:1.5}
+.brandMark{
+  width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7aa2ff);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff;flex:none;
+}
+.field{margin-bottom:14px}
+.field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600}
+.field input,.field select,.field textarea{
+  width:100%; background:var(--surface2); border:1px solid var(--border2); color:var(--text);
+  padding:10px 12px; border-radius:var(--radius-sm); font-size:14px; outline:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.btn{
+  border:1px solid var(--border2); background:var(--surface2); color:var(--text);
+  padding:10px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:600;
+  display:inline-flex; align-items:center; gap:6px; transition:.15s;
+}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+.btn.primary:hover{background:var(--accent2)}
+.btn.danger{background:var(--danger-dim); border-color:var(--danger); color:#ff8a98}
+.btn.success{background:var(--success-dim); border-color:var(--success); color:#6fe3a2}
+.btn.ghost{background:transparent}
+.btn.block{width:100%; justify-content:center}
+.btn.sm{padding:6px 10px; font-size:12px}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+.errMsg{color:#ff8a98; font-size:13px; margin:10px 0 0; min-height:16px}
+code.inline{background:var(--surface2); padding:2px 6px; border-radius:6px; font-size:12px}
+.setupSteps{font-size:13px; color:var(--muted); line-height:1.7; margin:0 0 18px; padding-left:18px}
+.setupSteps li{margin-bottom:6px}
+
+/* ---------- App shell ---------- */
+#app{display:flex; min-height:100vh}
+.sidebar{
+  width:252px; flex:none; background:var(--surface); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; height:100vh; position:sticky; top:0;
+}
+.sidebar-head{padding:18px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border)}
+.sidebar-head .name{font-weight:800; font-size:14px; line-height:1.2}
+.sidebar-head .name small{display:block; color:var(--muted); font-weight:500; font-size:11px}
+.sidebar-close{display:none; margin-left:auto; background:none; border:none; color:var(--muted); font-size:18px}
+.nav{flex:1; overflow-y:auto; padding:10px}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--radius-sm);
+  color:var(--muted); font-size:13.5px; font-weight:600; cursor:pointer; margin-bottom:2px;
+}
+.nav-item:hover{background:var(--surface2); color:var(--text)}
+.nav-item.active{background:var(--accent-dim); color:var(--accent)}
+.nav-item .ico{width:18px; text-align:center; flex:none}
+.nav-item .count{margin-left:auto; font-size:11px; color:var(--muted2); background:var(--surface2); padding:1px 7px; border-radius:20px}
+.nav-item.active .count{color:var(--accent)}
+.nav-div{height:1px; background:var(--border); margin:10px 6px}
+.sidebar-foot{padding:14px 16px; border-top:1px solid var(--border)}
+.syncRow{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); margin-bottom:10px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--success); flex:none}
+.dot.off{background:var(--muted2)}
+.userRow{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.userRow .email{font-size:11.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px}
+
+.mobileTopbar{display:none; position:sticky; top:0; z-index:40; background:var(--surface); border-bottom:1px solid var(--border); padding:10px 14px; align-items:center; gap:10px}
+.hamburger{background:none; border:none; color:var(--text); font-size:20px; padding:4px 8px}
+.sidebar-backdrop{display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:45}
+
+.main{flex:1; min-width:0; display:flex; flex-direction:column}
+.topbar{padding:20px 28px 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px}
+.topbar h2{margin:0; font-size:20px}
+.topbar .hint{color:var(--muted); font-size:12.5px; margin-top:2px}
+.content{padding:18px 28px 60px; flex:1}
+
+/* ---------- KPI / cards ---------- */
+.kpiGrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:20px}
+.kpi{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px}
+.kpi .lbl{color:var(--muted); font-size:12px; font-weight:600; margin-bottom:6px}
+.kpi .val{font-size:24px; font-weight:800; font-family:'IBM Plex Mono',monospace}
+.kpi .sub{font-size:11.5px; color:var(--muted2); margin-top:4px}
+.kpi.warn .val{color:var(--warn)}
+.kpi.success .val{color:var(--success)}
+.kpi.danger .val{color:var(--danger)}
+
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; margin-bottom:16px}
+.card h3{margin:0 0 12px; font-size:14px; display:flex; align-items:center; gap:8px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+
+.chartRow{display:flex; align-items:flex-end; gap:10px; height:120px; margin-top:8px}
+.chartBar{flex:1; background:var(--accent-dim); border-radius:4px 4px 0 0; position:relative; min-height:4px}
+.chartBar .fill{position:absolute; bottom:0; left:0; right:0; background:var(--accent); border-radius:4px 4px 0 0}
+.chartBar .lab{position:absolute; bottom:-20px; left:0; right:0; text-align:center; font-size:10px; color:var(--muted)}
+
+.rankList{list-style:none; margin:0; padding:0; font-size:13px}
+.rankList li{display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border)}
+.rankList li:last-child{border-bottom:none}
+.rankList .n{color:var(--muted); width:18px; flex:none}
+
+/* ---------- Table shell ---------- */
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+.search{flex:1; min-width:180px; max-width:320px}
+.chips{display:flex; gap:6px; flex-wrap:wrap}
+.chip{
+  padding:6px 12px; border-radius:20px; font-size:12.5px; font-weight:600; cursor:pointer;
+  background:var(--surface2); border:1px solid var(--border2); color:var(--muted);
+}
+.chip.active{background:var(--accent); border-color:var(--accent); color:#fff}
+.chip.low{border-color:var(--danger)}
+
+.tableWrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:13px; min-width:760px}
+thead th{
+  text-align:left; padding:10px 14px; color:var(--muted); font-weight:700; font-size:11.5px;
+  text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+tbody td{padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+.rowSub{color:var(--muted2); font-size:11.5px; margin-top:2px}
+.groupDivider td{background:var(--surface3); color:var(--muted); font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; padding:8px 14px}
+.badge{display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700}
+.badge.stock{background:var(--success-dim); color:var(--success)}
+.badge.lent{background:var(--warn-dim); color:var(--warn)}
+.badge.lost{background:var(--danger-dim); color:var(--danger)}
+.badge.sold{background:var(--surface3); color:var(--muted)}
+.badge.low{background:var(--danger-dim); color:var(--danger)}
+.badge.ok{background:var(--success-dim); color:var(--success)}
+.tagNew{background:var(--accent-dim); color:var(--accent); padding:1px 7px; border-radius:6px; font-size:10px; font-weight:700; margin-left:6px}
+.tagReturned{background:var(--warn-dim); color:var(--gold); padding:1px 7px; border-radius:6px; font-size:10px; font-weight:700}
+.rowActions{display:flex; gap:6px; flex-wrap:wrap}
+.emptyState{padding:48px 20px; text-align:center; color:var(--muted)}
+.emptyState .big{font-size:32px; margin-bottom:8px}
+
+.fab{position:fixed; right:24px; bottom:24px; z-index:30}
+@media (max-width:860px){.fab{right:16px; bottom:16px}}
+
+/* ---------- Modals ---------- */
+.overlay{position:fixed; inset:0; background:rgba(5,8,16,.65); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px}
+.modal{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); width:100%; max-width:560px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow)}
+.modal.sm{max-width:420px}
+.modal.lg{max-width:720px}
+.modalHead{padding:18px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between}
+.modalHead h3{margin:0; font-size:16px}
+.modalBody{padding:20px}
+.modalFoot{padding:16px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap}
+.modalFoot .left{margin-right:auto}
+.closeX{background:none; border:none; color:var(--muted); font-size:20px}
+.fieldRow{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+@media (max-width:520px){.fieldRow{grid-template-columns:1fr}}
+.checkRow{display:flex; align-items:center; gap:8px; margin:4px 0 14px; font-size:13px; color:var(--muted)}
+.checkRow input{width:16px; height:16px}
+.sectionLabel{font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.05em; font-weight:700; margin:18px 0 10px; display:flex; align-items:center; gap:8px}
+.sectionLabel::after{content:''; flex:1; height:1px; background:var(--border)}
+.scanBtn{padding:10px 12px; border-radius:var(--radius-sm); border:1px solid var(--border2); background:var(--surface2); color:var(--accent)}
+.withScan{display:flex; gap:6px}
+.withScan input{flex:1}
+#scanOverlay #scanReader{width:100%; border-radius:var(--radius-sm); overflow:hidden}
+.toastHost{position:fixed; top:16px; right:16px; z-index:200; display:flex; flex-direction:column; gap:8px}
+.toast{background:var(--surface3); border:1px solid var(--border2); color:var(--text); padding:10px 16px; border-radius:var(--radius-sm); font-size:13px; box-shadow:var(--shadow); animation:slideIn .2s}
+.toast.err{border-color:var(--danger); color:#ff8a98}
+.toast.ok{border-color:var(--success); color:#6fe3a2}
+@keyframes slideIn{from{transform:translateX(20px); opacity:0} to{transform:translateX(0); opacity:1}}
+
+/* ---------- Mobile ---------- */
+@media (max-width:860px){
+  .sidebar{
+    position:fixed; left:0; top:0; height:100vh; z-index:50; transform:translateX(-100%);
+    transition:transform .2s; width:270px;
+  }
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-close{display:block}
+  .sidebar-backdrop.open{display:block}
+  .mobileTopbar{display:flex}
+  .topbar{padding:16px 16px 0}
+  .content{padding:14px 16px 60px}
+  .kpiGrid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP SCREEN (shown when Firebase config is still placeholder) ============ -->
+<div id="setupScreen" class="hidden">
+  <div class="authCard" style="max-width:560px">
+    <h1><span class="brandMark">VT</span> Birlamchi sozlash kerak</h1>
+    <div class="sub">Bu platforma hali hech qaysi Firebase loyihaga ulanmagan. Ishga tushirishdan oldin quyidagilarni bajaring:</div>
+    <ol class="setupSteps">
+      <li><a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a>'da yangi loyiha yarating.</li>
+      <li><b>Build → Firestore Database</b>'ni yoqing (production mode).</li>
+      <li><b>Build → Authentication → Sign-in method</b>'da <b>Email/Password</b>'ni yoqing, so'ng <b>Users</b> bo'limida o'zingiz uchun email+parol yaratib qo'ying.</li>
+      <li>Loyiha sozlamalaridan (⚙️ → Project settings → your apps → Web app) <code class="inline">firebaseConfig</code> ni olib, shu faylning boshidagi <code class="inline">FIREBASE_CONFIG</code> o'zgaruvchisiga joylashtiring.</li>
+      <li><code class="inline">ALLOWED_EMAILS</code> ro'yxatiga xodimlar emailini yozing.</li>
+      <li><code class="inline">firestore.rules</code> faylini Firebase Console → Firestore → Rules bo'limiga joylashtiring (yoki Firebase CLI bilan deploy qiling).</li>
+    </ol>
+    <div class="errMsg" style="color:var(--muted)">Barchasini bajargach, sahifani qayta yuklang (F5).</div>
+  </div>
+</div>
+
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen" class="hidden">
+  <div class="authCard">
+    <h1><span class="brandMark">VT</span> VIP Tikuv</h1>
+    <div class="sub">Tikuv mashinalari va ehtiyot qismlari boshqaruv platformasi. Kirish uchun xizmat ko'rsatuvchi hisobingiz bilan tizimga kiring.</div>
+    <form id="loginForm">
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" required autocomplete="username"></div>
+      <div class="field"><label>Parol</label><input type="password" id="loginPassword" required autocomplete="current-password"></div>
+      <button type="submit" class="btn primary block" id="loginBtn">Kirish</button>
+      <div class="errMsg" id="loginErr"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <span class="brandMark">VT</span>
+      <div class="name">VIP Tikuv<small>Boshqaruv paneli</small></div>
+      <button class="sidebar-close" id="sidebarClose">✕</button>
+    </div>
+    <nav class="nav" id="navList"></nav>
+    <div class="sidebar-foot">
+      <div class="syncRow"><span class="dot" id="syncDot"></span><span id="syncText">Ulanmoqda...</span></div>
+      <div class="userRow">
+        <span class="email mono" id="userEmail"></span>
+        <button class="btn sm ghost" id="logoutBtn">Chiqish</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="mobileTopbar">
+      <button class="hamburger" id="hamburgerBtn">☰</button>
+      <strong id="mobileTitle">VIP Tikuv</strong>
+    </div>
+    <div class="topbar">
+      <div><h2 id="pageTitle">Bosh sahifa</h2><div class="hint" id="pageHint"></div></div>
+      <div id="pageActions" style="display:flex; gap:8px; flex-wrap:wrap"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- ============ MACHINE MODAL ============ -->
+<div class="overlay hidden" id="machineModal">
+  <div class="modal lg">
+    <div class="modalHead"><h3 id="machineModalTitle">Yangi mashina</h3><button class="closeX" data-close="machineModal">✕</button></div>
+    <form id="machineForm">
+      <div class="modalBody">
+        <div class="fieldRow">
+          <div class="field"><label>Brend</label>
+            <input list="brandList" id="f_brand" placeholder="Masalan: Juki" required>
+            <datalist id="brandList"></datalist>
+          </div>
+          <div class="field"><label>Turi</label>
+            <select id="f_type">
+              <option value="household">Maishiy (uy)</option>
+              <option value="industrial">Sanoat</option>
+              <option value="overlock">Overlok</option>
+              <option value="embroidery">Kashtachi</option>
+              <option value="coverstitch">Trikotaj (coverstitch)</option>
+              <option value="other">Boshqa</option>
+            </select>
+          </div>
+        </div>
+        <div class="fieldRow">
+          <div class="field"><label>Model</label><input id="f_model" placeholder="Masalan: DDL-8700" required></div>
+          <div class="field"><label>Seriya raqami</label>
+            <div class="withScan"><input id="f_serial" placeholder="Agar mavjud bo'lsa"><button type="button" class="scanBtn" data-scan="f_serial">📷</button></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:20px; margin:4px 0 6px">
+          <label class="checkRow" style="margin:0"><input type="checkbox" id="f_hasBox"> Qutisi bor</label>
+          <label class="checkRow" style="margin:0"><input type="checkbox" id="f_isNew"> Yangi (ishlatilmagan)</label>
+        </div>
+        <div class="field"><label>Holati</label>
+          <select id="f_status">
+            <option value="stock">Omborda</option>
+            <option value="lent">Band (berilgan)</option>
+            <option value="lost">Yo'qolgan</option>
+            <option value="sold">Sotilgan</option>
+          </select>
+        </div>
+
+        <div class="sectionLabel">Sotib olish ma'lumoti</div>
+        <div class="fieldRow">
+          <div class="field"><label>Kimdan olindi</label><input id="f_source"></div>
+          <div class="field"><label>Uning raqami</label><input id="f_sourcePhone" placeholder="+998 ..."></div>
+        </div>
+        <div class="fieldRow">
+          <div class="field"><label>Sotib olingan sana</label><input type="date" id="f_buyDate"></div>
+          <div class="field"><label>Sotib olingan narx ($)</label><input type="number" step="0.01" id="f_buyPrice"></div>
+        </div>
+        <div class="field"><label>Izoh</label><textarea id="f_note" rows="2"></textarea></div>
+
+        <div class="sectionLabel">Mijozlar katalogi uchun</div>
+        <div class="fieldRow">
+          <div class="field"><label>Sotish narxi ($)</label><input type="number" step="0.01" id="f_askPrice"></div>
+          <div class="field" style="display:flex; align-items:flex-end"><label class="checkRow" style="margin:0 0 10px"><input type="checkbox" id="f_showCatalog" checked> Ommaviy katalogda ko'rsatilsin</label></div>
+        </div>
+
+        <div id="sellBlock" class="hidden">
+          <div class="sectionLabel">Kimga sotildi</div>
+          <div class="fieldRow">
+            <div class="field"><label>Xaridor</label><input id="f_buyer"></div>
+            <div class="field"><label>Xaridor raqami</label><input id="f_buyerPhone" placeholder="+998 ..."></div>
+          </div>
+          <div class="fieldRow">
+            <div class="field"><label>Sotilgan sana</label><input type="date" id="f_sellDate"></div>
+            <div class="field"><label>Sotilgan narx ($)</label><input type="number" step="0.01" id="f_sellPrice"></div>
+          </div>
+          <div class="field"><label>Sotish izohi</label><textarea id="f_sellNote" rows="2"></textarea></div>
+        </div>
+      </div>
+      <div class="modalFoot">
+        <button type="button" class="btn danger left hidden" id="machineDeleteBtn">O'chirish</button>
+        <button type="button" class="btn ghost" data-close="machineModal">Bekor qilish</button>
+        <button type="submit" class="btn primary" id="machineSaveBtn">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ QUICK SELL (machine) MODAL ============ -->
+<div class="overlay hidden" id="soldModal">
+  <div class="modal sm">
+    <div class="modalHead"><h3>Mashinani sotish</h3><button class="closeX" data-close="soldModal">✕</button></div>
+    <form id="soldForm">
+      <div class="modalBody">
+        <div class="field"><label>Xaridor</label><input id="s_buyer" required></div>
+        <div class="field"><label>Xaridor raqami</label><input id="s_buyerPhone" placeholder="+998 ..."></div>
+        <div class="fieldRow">
+          <div class="field"><label>Sotilgan narx ($)</label><input type="number" step="0.01" id="s_sellPrice" required></div>
+          <div class="field"><label>Sana</label><input type="date" id="s_sellDate" required></div>
+        </div>
+        <div class="field"><label>Izoh</label><textarea id="s_note" rows="2"></textarea></div>
+      </div>
+      <div class="modalFoot"><button type="button" class="btn ghost" data-close="soldModal">Bekor qilish</button><button type="submit" class="btn primary">Sotildi deb belgilash</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ PART MODAL ============ -->
+<div class="overlay hidden" id="partModal">
+  <div class="modal">
+    <div class="modalHead"><h3 id="partModalTitle">Yangi ehtiyot qism</h3><button class="closeX" data-close="partModal">✕</button></div>
+    <form id="partForm">
+      <div class="modalBody">
+        <div class="fieldRow">
+          <div class="field"><label>Nomi</label><input id="p_name" placeholder="Masalan: Igna DBx1 №14" required></div>
+          <div class="field"><label>Kategoriya</label>
+            <select id="p_category">
+              <option value="needle">Igna</option>
+              <option value="bobbin">Shpulka / moynak</option>
+              <option value="belt">Kamar (tasma)</option>
+              <option value="motor">Motor</option>
+              <option value="foot">Oyoqcha (presser foot)</option>
+              <option value="pedal">Pedal</option>
+              <option value="plate">Ignabar / plastinka</option>
+              <option value="bulb">Lampochka</option>
+              <option value="oil">Moy / moylash vositasi</option>
+              <option value="thread">Ip</option>
+              <option value="cable">Kabel / simlar</option>
+              <option value="other">Boshqa ehtiyot qism</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Mosligi (ixtiyoriy)</label><input id="p_compat" placeholder="Masalan: Juki DDL-8700, Brother GS Series"></div>
+        <div class="fieldRow">
+          <div class="field"><label>SKU / shtrix-kod</label>
+            <div class="withScan"><input id="p_sku" placeholder="Ixtiyoriy"><button type="button" class="scanBtn" data-scan="p_sku">📷</button></div>
+          </div>
+          <div class="field"><label>Ta'minotchi</label><input id="p_supplier"></div>
+        </div>
+        <div class="fieldRow">
+          <div class="field"><label>Miqdor (dona)</label><input type="number" id="p_qty" min="0" required></div>
+          <div class="field"><label>Kam qoldiq chegarasi</label><input type="number" id="p_lowAt" min="0" value="5"></div>
+        </div>
+        <div class="fieldRow">
+          <div class="field"><label>Tannarx (1 dona, $)</label><input type="number" step="0.01" id="p_buyPrice"></div>
+          <div class="field"><label>Sotish narxi (1 dona, $)</label><input type="number" step="0.01" id="p_askPrice"></div>
+        </div>
+        <div class="field"><label>Izoh</label><textarea id="p_note" rows="2"></textarea></div>
+        <label class="checkRow"><input type="checkbox" id="p_showCatalog" checked> Ommaviy katalogda ko'rsatilsin</label>
+      </div>
+      <div class="modalFoot">
+        <button type="button" class="btn danger left hidden" id="partDeleteBtn">O'chirish</button>
+        <button type="button" class="btn ghost" data-close="partModal">Bekor qilish</button>
+        <button type="submit" class="btn primary">Saqlash</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ SELL PART MODAL ============ -->
+<div class="overlay hidden" id="sellPartModal">
+  <div class="modal sm">
+    <div class="modalHead"><h3>Ehtiyot qismni sotish</h3><button class="closeX" data-close="sellPartModal">✕</button></div>
+    <form id="sellPartForm">
+      <div class="modalBody">
+        <div class="field"><label id="sp_available">Mavjud: —</label></div>
+        <div class="fieldRow">
+          <div class="field"><label>Miqdor</label><input type="number" id="sp_qty" min="1" required></div>
+          <div class="field"><label>Narx (1 dona, $)</label><input type="number" step="0.01" id="sp_price" required></div>
+        </div>
+        <div class="fieldRow">
+          <div class="field"><label>Xaridor (ixtiyoriy)</label><input id="sp_buyer"></div>
+          <div class="field"><label>Sana</label><input type="date" id="sp_date" required></div>
+        </div>
+        <div class="field"><label>Izoh</label><input id="sp_note"></div>
+      </div>
+      <div class="modalFoot"><button type="button" class="btn ghost" data-close="sellPartModal">Bekor qilish</button><button type="submit" class="btn primary">Sotish</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ CONFIRM MODAL ============ -->
+<div class="overlay hidden" id="confirmModal">
+  <div class="modal sm">
+    <div class="modalHead"><h3 id="confirmTitle">Tasdiqlash</h3><button class="closeX" data-close="confirmModal">✕</button></div>
+    <div class="modalBody"><div id="confirmText"></div></div>
+    <div class="modalFoot"><button type="button" class="btn ghost" data-close="confirmModal">Bekor qilish</button><button type="button" class="btn danger" id="confirmOkBtn">Tasdiqlayman</button></div>
+  </div>
+</div>
+
+<!-- ============ SCAN MODAL ============ -->
+<div class="overlay hidden" id="scanOverlay">
+  <div class="modal sm">
+    <div class="modalHead"><h3>Skanerlash</h3><button class="closeX" data-close="scanOverlay">✕</button></div>
+    <div class="modalBody"><div id="scanReader"></div><div class="hint" style="margin-top:10px; color:var(--muted); font-size:12px">Shtrix-kod / QR-kodni kamera oldiga tuting.</div></div>
+  </div>
+</div>
+
+<div class="toastHost" id="toastHost"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONFIG — fill these in before first use (see setup screen)
+   ============================================================ */
+var FIREBASE_CONFIG = {
+  apiKey: "REPLACE_WITH_API_KEY",
+  authDomain: "REPLACE_WITH_PROJECT_ID.firebaseapp.com",
+  projectId: "REPLACE_WITH_PROJECT_ID",
+  storageBucket: "REPLACE_WITH_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_WITH_SENDER_ID",
+  appId: "REPLACE_WITH_APP_ID"
+};
+var ALLOWED_EMAILS = ["abdujalilov7707@gmail.com" /*, "add-staff-email-here@gmail.com" */];
+var FINANCE_PASSWORD = "0000";
+var DEFAULT_LOW_STOCK = 5;
+var KNOWN_BRANDS = ["Juki","Brother","Singer","Janome","Jack","Typical","Zoje","Pfaff","Bernina","Toyota","Elna","Necchi","Siruba","Pegasus","Yamata"];
+
+var MACHINE_STATUS = {stock:"Omborda", lent:"Band", lost:"Yo'qolgan", sold:"Sotilgan"};
+var MACHINE_TYPE = {household:"Maishiy", industrial:"Sanoat", overlock:"Overlok", embroidery:"Kashtachi", coverstitch:"Trikotaj", other:"Boshqa"};
+var PART_CATEGORY = {needle:"Igna", bobbin:"Shpulka/moynak", belt:"Kamar", motor:"Motor", foot:"Oyoqcha", pedal:"Pedal", plate:"Plastinka", bulb:"Lampochka", oil:"Moy", thread:"Ip", cable:"Kabel", other:"Boshqa"};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+var state = {
+  tab: "dashboard",
+  user: null,
+  machines: [],
+  parts: [],
+  partSales: [],
+  notes: "",
+  sheetSyncUrl: "",
+  financeUnlocked: false,
+  ui: {
+    machines: {search:"", brand:"all", type:"all", status:"all"},
+    parts: {search:"", category:"all", lowOnly:false}
+  },
+  editingMachineId: null,
+  editingPartId: null,
+  soldMachineId: null,
+  sellPartId: null,
+  scanTargetInput: null,
+  html5QrInstance: null
+};
+
+var db=null, auth=null, machinesCol=null, partsCol=null, partSalesCol=null, catalogMachinesCol=null, catalogPartsCol=null;
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function $(id){ return document.getElementById(id); }
+function qs(sel,root){ return (root||document).querySelector(sel); }
+function qsa(sel,root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtMoney(n){ if(n==null||n==="") return "—"; var v=Number(n); return "$"+v.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2}); }
+function fmtDate(s){ if(!s) return "—"; return s; }
+function num(v){ var n=parseFloat(v); return isNaN(n)?null:n; }
+function toast(msg,type){
+  var el=document.createElement("div");
+  el.className="toast"+(type?" "+type:"");
+  el.textContent=msg;
+  $("toastHost").appendChild(el);
+  setTimeout(function(){ el.remove(); }, 3200);
+}
+function openModal(id){ $(id).classList.remove("hidden"); }
+function closeModal(id){ $(id).classList.add("hidden"); }
+qsa("[data-close]").forEach(function(btn){
+  btn.addEventListener("click", function(){ closeModal(btn.getAttribute("data-close")); });
+});
+qsa(".overlay").forEach(function(ov){
+  ov.addEventListener("click", function(e){ if(e.target===ov) ov.classList.add("hidden"); });
+});
+
+function profitOf(buy,sell){ if(buy==null||sell==null) return null; return sell-buy; }
+
+/* ============================================================
+   FIREBASE INIT
+   ============================================================ */
+function isPlaceholderConfig(){
+  return !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf("REPLACE_WITH")===0 || FIREBASE_CONFIG.projectId.indexOf("REPLACE_WITH")===0;
+}
+
+function init(){
+  if(isPlaceholderConfig()){
+    $("setupScreen").classList.remove("hidden");
+    return;
+  }
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    machinesCol = db.collection("machines");
+    partsCol = db.collection("parts");
+    partSalesCol = db.collection("partSales");
+    catalogMachinesCol = db.collection("catalog_machines");
+    catalogPartsCol = db.collection("catalog_parts");
+  }catch(e){
+    console.error(e);
+    $("setupScreen").classList.remove("hidden");
+    return;
+  }
+  auth.onAuthStateChanged(function(user){
+    if(user && ALLOWED_EMAILS.indexOf((user.email||"").toLowerCase())===-1){
+      auth.signOut();
+      $("loginErr").textContent="Bu hisobga ruxsat yo'q.";
+      $("loginScreen").classList.remove("hidden");
+      $("app").classList.add("hidden");
+      return;
+    }
+    if(user){
+      state.user=user;
+      $("loginScreen").classList.add("hidden");
+      $("app").classList.remove("hidden");
+      $("userEmail").textContent=user.email;
+      startListeners();
+    } else {
+      state.user=null;
+      $("app").classList.add("hidden");
+      $("loginScreen").classList.remove("hidden");
+    }
+  });
+}
+
+$("loginForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var email=$("loginEmail").value.trim(), pass=$("loginPassword").value;
+  $("loginErr").textContent="";
+  $("loginBtn").setAttribute("disabled","1");
+  auth.signInWithEmailAndPassword(email,pass).catch(function(err){
+    $("loginErr").textContent = "Email yoki parol xato.";
+  }).finally(function(){ $("loginBtn").removeAttribute("disabled"); });
+});
+$("logoutBtn").addEventListener("click", function(){ auth.signOut(); });
+
+/* ============================================================
+   LISTENERS
+   ============================================================ */
+function startListeners(){
+  machinesCol.orderBy("seq","desc").limit(3000).onSnapshot(function(snap){
+    state.machines = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    render();
+  }, function(err){ console.error(err); });
+
+  partsCol.orderBy("seq","desc").limit(3000).onSnapshot(function(snap){
+    state.parts = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    render();
+  }, function(err){ console.error(err); });
+
+  partSalesCol.orderBy("seq","desc").limit(3000).onSnapshot(function(snap){
+    state.partSales = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    render();
+  }, function(err){ console.error(err); });
+
+  db.collection("meta").doc("notes").onSnapshot(function(doc){
+    state.notes = doc.exists ? (doc.data().text||"") : "";
+    if(state.tab==="dashboard") render();
+  });
+
+  db.collection("meta").doc("sheetSync").onSnapshot(function(doc){
+    state.sheetSyncUrl = doc.exists ? (doc.data().url||"") : "";
+    updateSyncIndicator();
+    if(state.tab==="settings") render();
+  });
+}
+
+function updateSyncIndicator(){
+  var has = !!state.sheetSyncUrl;
+  $("syncDot").className = "dot"+(has?"":" off");
+  $("syncText").textContent = has ? "Sheet sinxronlash yoqilgan" : "Sheet sinxronlash o'chiq";
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+var NAV = [
+  {id:"dashboard", label:"Bosh sahifa", ico:"🏠"},
+  {id:"machines", label:"Mashinalar", ico:"🧵", count:function(){ return state.machines.length; }},
+  {id:"newmachines", label:"Yangi mashinalar", ico:"✨", count:function(){ return state.machines.filter(function(m){return m.isNew;}).length; }},
+  {id:"parts", label:"Ehtiyot qismlar", ico:"⚙️", count:function(){ return state.parts.length; }},
+  {id:"div"},
+  {id:"finance", label:"Moliya", ico:"💰"},
+  {id:"settings", label:"Sozlamalar", ico:"🔧"}
+];
+function renderNav(){
+  var html = NAV.map(function(n){
+    if(n.id==="div") return '<div class="nav-div"></div>';
+    var active = state.tab===n.id ? " active":"";
+    var count = n.count ? '<span class="count">'+n.count()+'</span>' : "";
+    return '<div class="nav-item'+active+'" data-tab="'+n.id+'"><span class="ico">'+n.ico+'</span><span>'+n.label+'</span>'+count+'</div>';
+  }).join("");
+  $("navList").innerHTML = html;
+  qsa(".nav-item[data-tab]").forEach(function(el){
+    el.addEventListener("click", function(){ switchTab(el.getAttribute("data-tab")); closeMobileMenu(); });
+  });
+}
+function switchTab(tab){ state.tab=tab; render(); }
+
+/* mobile drawer */
+function openMobileMenu(){ $("sidebar").classList.add("open"); $("sidebarBackdrop").classList.add("open"); }
+function closeMobileMenu(){ $("sidebar").classList.remove("open"); $("sidebarBackdrop").classList.remove("open"); }
+$("hamburgerBtn").addEventListener("click", openMobileMenu);
+$("sidebarClose").addEventListener("click", closeMobileMenu);
+$("sidebarBackdrop").addEventListener("click", closeMobileMenu);
+
+/* ============================================================
+   MAIN RENDER DISPATCH
+   ============================================================ */
+function render(){
+  renderNav();
+  var titles = {dashboard:["Bosh sahifa",""], machines:["Mashinalar","Barcha tikuv mashinalari"], newmachines:["Yangi mashinalar","Hali ishlatilmagan mashinalar"], parts:["Ehtiyot qismlar","Kichik qismlar va aksessuarlar zahirasi"], finance:["Moliya","Foyda, xarajat va hisobotlar"], settings:["Sozlamalar","Sinxronlash va boshqa parametrlar"]};
+  $("pageTitle").textContent = titles[state.tab][0];
+  $("pageHint").textContent = titles[state.tab][1];
+  $("mobileTitle").textContent = titles[state.tab][0];
+  $("pageActions").innerHTML="";
+  var c = $("content");
+  if(state.tab==="dashboard") { c.innerHTML = renderDashboard(); wireDashboard(); }
+  else if(state.tab==="machines") { c.innerHTML = renderMachinesView(false); wireMachinesView(); }
+  else if(state.tab==="newmachines") { c.innerHTML = renderMachinesView(true); wireMachinesView(); }
+  else if(state.tab==="parts") { c.innerHTML = renderPartsView(); wirePartsView(); }
+  else if(state.tab==="finance") { c.innerHTML = renderFinance(); wireFinance(); }
+  else if(state.tab==="settings") { c.innerHTML = renderSettings(); wireSettings(); }
+
+  if(state.tab==="machines"||state.tab==="newmachines"){
+    $("pageActions").innerHTML = '<button class="btn primary" id="addMachineBtn">+ Mashina qo\'shish</button>';
+    $("addMachineBtn").addEventListener("click", function(){ openMachineModal(null); });
+  }
+  if(state.tab==="parts"){
+    $("pageActions").innerHTML = '<button class="btn primary" id="addPartBtn">+ Ehtiyot qism qo\'shish</button>';
+    $("addPartBtn").addEventListener("click", function(){ openPartModal(null); });
+  }
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  var ms = state.machines;
+  var inStock = ms.filter(function(m){return m.status==="stock";}).length;
+  var sold = ms.filter(function(m){return m.status==="sold";}).length;
+  var lent = ms.filter(function(m){return m.status==="lent";}).length;
+  var lost = ms.filter(function(m){return m.status==="lost";}).length;
+  var totalPartsQty = state.parts.reduce(function(a,p){return a+(Number(p.qty)||0);},0);
+  var lowParts = state.parts.filter(function(p){ return Number(p.qty)<=(p.lowAt!=null?Number(p.lowAt):DEFAULT_LOW_STOCK); });
+
+  var brandCounts = {};
+  ms.forEach(function(m){ var b=m.brand||"Boshqa"; brandCounts[b]=(brandCounts[b]||0)+1; });
+  var brandCards = Object.keys(brandCounts).sort(function(a,b){return brandCounts[b]-brandCounts[a];}).slice(0,6).map(function(b){
+    return '<div class="kpi"><div class="lbl">'+esc(b)+'</div><div class="val">'+brandCounts[b]+'</div><div class="sub">dona</div></div>';
+  }).join("");
+
+  // simple 6-month purchase chart (machines bought per month)
+  var months=[]; var now=new Date();
+  for(var i=5;i>=0;i--){ var d=new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({key:d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"), label:d.toLocaleDateString("uz",{month:"short"})}); }
+  var counts = months.map(function(mo){ return ms.filter(function(m){ return (m.buyDate||"").slice(0,7)===mo.key; }).length; });
+  var max = Math.max.apply(null, counts.concat([1]));
+  var chartHtml = months.map(function(mo,i){
+    var h = Math.round((counts[i]/max)*90)+6;
+    return '<div class="chartBar" style="height:96px"><div class="fill" style="height:'+h+'px"></div><div class="lab">'+mo.label+'</div></div>';
+  }).join("");
+
+  var recent = ms.slice(0,6).map(function(m){
+    return '<li><span>'+esc(m.brand||"")+' '+esc(m.model||"")+'</span><span class="mono" style="color:var(--muted)">'+fmtDate(m.buyDate)+'</span></li>';
+  }).join("") || '<li style="color:var(--muted)">Hali mashina qo\'shilmagan</li>';
+
+  var lowList = lowParts.slice(0,6).map(function(p){
+    return '<li><span>'+esc(p.name)+'</span><span class="mono" style="color:var(--danger)">'+p.qty+' dona</span></li>';
+  }).join("") || '<li style="color:var(--muted)">Kam qoldiq yo\'q</li>';
+
+  return ''+
+  '<div class="kpiGrid">'+
+    '<div class="kpi"><div class="lbl">Jami mashinalar</div><div class="val">'+ms.length+'</div></div>'+
+    '<div class="kpi success"><div class="lbl">Omborda</div><div class="val">'+inStock+'</div></div>'+
+    '<div class="kpi warn"><div class="lbl">Band</div><div class="val">'+lent+'</div></div>'+
+    '<div class="kpi danger"><div class="lbl">Yo\'qolgan</div><div class="val">'+lost+'</div></div>'+
+    '<div class="kpi"><div class="lbl">Sotilgan</div><div class="val">'+sold+'</div></div>'+
+    '<div class="kpi'+(lowParts.length?" danger":"")+'"><div class="lbl">Qism zahirasi</div><div class="val">'+totalPartsQty+'</div><div class="sub">'+lowParts.length+' nomda kam qoldiq</div></div>'+
+  '</div>'+
+  '<div class="grid2">'+
+    '<div class="card"><h3>Brendlar bo\'yicha</h3><div class="kpiGrid">'+(brandCards||'<div style="color:var(--muted)">Ma\'lumot yo\'q</div>')+'</div></div>'+
+    '<div class="card"><h3>So\'nggi 6 oyda sotib olingan mashinalar</h3><div class="chartRow">'+chartHtml+'</div></div>'+
+  '</div>'+
+  '<div class="grid2">'+
+    '<div class="card"><h3>So\'nggi qo\'shilganlar</h3><ul class="rankList">'+recent+'</ul></div>'+
+    '<div class="card"><h3>⚠️ Kam qolgan ehtiyot qismlar</h3><ul class="rankList">'+lowList+'</ul></div>'+
+  '</div>'+
+  '<div class="card"><h3>Eslatmalar</h3><textarea id="notesBox" rows="4" style="width:100%; background:var(--surface2); border:1px solid var(--border2); color:var(--text); border-radius:8px; padding:10px">'+esc(state.notes)+'</textarea>'+
+    '<div style="margin-top:8px; text-align:right"><button class="btn sm primary" id="saveNotesBtn">Saqlash</button></div></div>';
+}
+function wireDashboard(){
+  var b=$("saveNotesBtn");
+  if(b) b.addEventListener("click", function(){ db.collection("meta").doc("notes").set({text:$("notesBox").value, updatedAt:new Date().toISOString()}).then(function(){ toast("Saqlandi","ok"); }); });
+}
+
+/* ============================================================
+   MACHINES VIEW
+   ============================================================ */
+function brandList(){
+  var set={};
+  state.machines.forEach(function(m){ if(m.brand) set[m.brand]=true; });
+  return Object.keys(set).sort();
+}
+function filteredMachines(onlyNew){
+  var f = state.ui.machines, q=f.search.toLowerCase();
+  return state.machines.filter(function(m){
+    if(onlyNew && !m.isNew) return false;
+    if(f.brand!=="all" && m.brand!==f.brand) return false;
+    if(f.type!=="all" && m.type!==f.type) return false;
+    if(f.status!=="all" && m.status!==f.status) return false;
+    if(q){
+      var hay=((m.brand||"")+" "+(m.model||"")+" "+(m.serial||"")+" "+(m.source||"")+" "+(m.buyer||"")).toLowerCase();
+      if(hay.indexOf(q)===-1) return false;
+    }
+    return true;
+  });
+}
+function renderMachinesView(onlyNew){
+  var list = filteredMachines(onlyNew);
+  var brands = brandList();
+  var f = state.ui.machines;
+  var brandChips = ['<div class="chip'+(f.brand==="all"?" active":"")+'" data-fbrand="all">Barchasi</div>'].concat(brands.map(function(b){
+    return '<div class="chip'+(f.brand===b?" active":"")+'" data-fbrand="'+esc(b)+'">'+esc(b)+'</div>';
+  })).join("");
+  var typeChips = ['all'].concat(Object.keys(MACHINE_TYPE)).map(function(t){
+    var label = t==="all" ? "Barcha turlar" : MACHINE_TYPE[t];
+    return '<div class="chip'+(f.type===t?" active":"")+'" data-ftype="'+t+'">'+label+'</div>';
+  }).join("");
+  var statusChips = ['all'].concat(Object.keys(MACHINE_STATUS)).map(function(s){
+    var label = s==="all" ? "Hammasi" : MACHINE_STATUS[s];
+    return '<div class="chip'+(f.status===s?" active":"")+'" data-fstatus="'+s+'">'+label+'</div>';
+  }).join("");
+
+  var rowsHtml;
+  if(!list.length){
+    rowsHtml = '<tr><td colspan="7"><div class="emptyState"><div class="big">🧵</div>Hech narsa topilmadi</div></td></tr>';
+  } else {
+    // group: not sold/lent first, then Band divider, then Sotilgan divider
+    var main = list.filter(function(m){return m.status!=="lent" && m.status!=="sold";});
+    var lent = list.filter(function(m){return m.status==="lent";});
+    var sold = list.filter(function(m){return m.status==="sold";});
+    var out=[];
+    main.forEach(function(m){ out.push(machineRow(m)); });
+    if(f.status==="all" && lent.length){ out.push('<tr class="groupDivider"><td colspan="7">Band ('+lent.length+' ta)</td></tr>'); lent.forEach(function(m){ out.push(machineRow(m)); }); }
+    if(f.status==="all" && sold.length){ out.push('<tr class="groupDivider"><td colspan="7">Sotilgan ('+sold.length+' ta)</td></tr>'); sold.forEach(function(m){ out.push(machineRow(m)); }); }
+    if(f.status!=="all"){ out=[]; list.forEach(function(m){ out.push(machineRow(m)); }); }
+    rowsHtml = out.join("");
+  }
+
+  return ''+
+  '<div class="toolbar">'+
+    '<input class="search field" style="margin:0" id="machineSearch" placeholder="Qidirish: brend, model, seriya, mijoz..." value="'+esc(f.search)+'">'+
+  '</div>'+
+  '<div class="chips" style="margin-bottom:8px">'+brandChips+'</div>'+
+  '<div class="chips" style="margin-bottom:8px">'+typeChips+'</div>'+
+  '<div class="chips" style="margin-bottom:14px">'+statusChips+'</div>'+
+  '<div class="tableWrap"><table><thead><tr>'+
+    '<th>#</th><th>Model</th><th>Seriya</th><th>Narx</th><th>Holati</th><th>Sotib olindi</th><th>Kimga sotildi</th><th></th>'+
+  '</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
+}
+function machineRow(m, idx){
+  var price = m.status==="sold" ? fmtMoney(m.sellPrice) : fmtMoney(m.askPrice!=null?m.askPrice:m.buyPrice);
+  var buyerCell = m.buyer ? esc(m.buyer)+(m.returnedAt?' <span class="tagReturned">qaytarilgan</span>':'')+'<div class="rowSub">'+fmtDate(m.sellDate)+'</div>' : "—";
+  var actions = '<div class="rowActions">'+
+    '<button class="btn sm" data-edit="'+m.id+'">Tahrir</button>'+
+    (m.status!=="sold" ? '<button class="btn sm success" data-sold="'+m.id+'">Sotildi</button>' : '')+
+    (m.status==="stock" ? '<button class="btn sm" data-band="'+m.id+'">Band</button>' : '')+
+    (m.status==="sold" ? '<button class="btn sm" data-return="'+m.id+'">Qaytarib olindi</button>' : '')+
+  '</div>';
+  return '<tr>'+
+    '<td class="mono" style="color:var(--muted)">'+(idx!=null?idx:"")+'</td>'+
+    '<td><b>'+esc(m.brand||"")+' '+esc(m.model||"")+'</b>'+(m.isNew?'<span class="tagNew">Yangi</span>':'')+'<div class="rowSub">'+(MACHINE_TYPE[m.type]||"")+'</div></td>'+
+    '<td class="mono">'+esc(m.serial||"—")+'</td>'+
+    '<td class="mono">'+price+'</td>'+
+    '<td><span class="badge '+(m.status==="lent"?"lent":m.status)+'">'+MACHINE_STATUS[m.status]+'</span></td>'+
+    '<td>'+esc(m.source||"—")+'<div class="rowSub">'+fmtDate(m.buyDate)+'</div></td>'+
+    '<td>'+buyerCell+'</td>'+
+    '<td>'+actions+'</td>'+
+  '</tr>';
+}
+function wireMachinesView(){
+  $("machineSearch") && $("machineSearch").addEventListener("input", function(){ state.ui.machines.search=this.value; render(); });
+  qsa("[data-fbrand]").forEach(function(el){ el.addEventListener("click", function(){ state.ui.machines.brand=el.getAttribute("data-fbrand"); render(); }); });
+  qsa("[data-ftype]").forEach(function(el){ el.addEventListener("click", function(){ state.ui.machines.type=el.getAttribute("data-ftype"); render(); }); });
+  qsa("[data-fstatus]").forEach(function(el){ el.addEventListener("click", function(){ state.ui.machines.status=el.getAttribute("data-fstatus"); render(); }); });
+  qsa("[data-edit]").forEach(function(el){ el.addEventListener("click", function(){ openMachineModal(el.getAttribute("data-edit")); }); });
+  qsa("[data-sold]").forEach(function(el){ el.addEventListener("click", function(){ openSoldModal(el.getAttribute("data-sold")); }); });
+  qsa("[data-band]").forEach(function(el){ el.addEventListener("click", function(){ quickSetStatus(el.getAttribute("data-band"), "lent"); }); });
+  qsa("[data-return]").forEach(function(el){ el.addEventListener("click", function(){ confirmReturn(el.getAttribute("data-return")); }); });
+}
+
+/* ---- machine modal ---- */
+function openMachineModal(id){
+  state.editingMachineId = id;
+  var m = id ? state.machines.find(function(x){return x.id===id;}) : null;
+  $("brandList").innerHTML = KNOWN_BRANDS.map(function(b){ return '<option value="'+esc(b)+'">'; }).join("");
+  $("machineModalTitle").textContent = m ? "Mashinani tahrirlash" : "Yangi mashina";
+  $("f_brand").value = m? m.brand||"" : "";
+  $("f_type").value = m? m.type||"household" : "household";
+  $("f_model").value = m? m.model||"" : "";
+  $("f_serial").value = m? m.serial||"" : "";
+  $("f_hasBox").checked = m? !!m.hasBox : false;
+  $("f_isNew").checked = m? !!m.isNew : false;
+  $("f_status").value = m? m.status||"stock" : "stock";
+  $("f_source").value = m? m.source||"" : "";
+  $("f_sourcePhone").value = m? m.sourcePhone||"" : "";
+  $("f_buyDate").value = m? m.buyDate||"" : todayStr();
+  $("f_buyPrice").value = m? (m.buyPrice!=null?m.buyPrice:"") : "";
+  $("f_note").value = m? m.note||"" : "";
+  $("f_askPrice").value = m? (m.askPrice!=null?m.askPrice:"") : "";
+  $("f_showCatalog").checked = m? (m.showCatalog!==false) : true;
+  $("f_buyer").value = m? m.buyer||"" : "";
+  $("f_buyerPhone").value = m? m.buyerPhone||"" : "";
+  $("f_sellDate").value = m? m.sellDate||"" : todayStr();
+  $("f_sellPrice").value = m? (m.sellPrice!=null?m.sellPrice:"") : "";
+  $("f_sellNote").value = m? m.sellNote||"" : "";
+  toggleSellBlock();
+  $("machineDeleteBtn").classList.toggle("hidden", !m);
+  openModal("machineModal");
+}
+$("f_status").addEventListener("change", toggleSellBlock);
+function toggleSellBlock(){ $("sellBlock").classList.toggle("hidden", $("f_status").value!=="sold"); }
+
+$("machineForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var id = state.editingMachineId;
+  var prior = id ? state.machines.find(function(x){return x.id===id;}) : null;
+  var now = new Date().toISOString();
+  var status = $("f_status").value;
+  var data = {
+    brand: $("f_brand").value.trim(),
+    type: $("f_type").value,
+    model: $("f_model").value.trim(),
+    serial: $("f_serial").value.trim(),
+    hasBox: $("f_hasBox").checked,
+    isNew: $("f_isNew").checked,
+    status: status,
+    source: $("f_source").value.trim(),
+    sourcePhone: $("f_sourcePhone").value.trim(),
+    buyDate: $("f_buyDate").value,
+    buyPrice: num($("f_buyPrice").value),
+    note: $("f_note").value.trim(),
+    askPrice: num($("f_askPrice").value),
+    showCatalog: $("f_showCatalog").checked,
+    buyer: $("f_buyer").value.trim(),
+    buyerPhone: $("f_buyerPhone").value.trim(),
+    sellDate: $("f_sellDate").value,
+    sellPrice: num($("f_sellPrice").value),
+    sellNote: $("f_sellNote").value.trim(),
+    updatedAt: now
+  };
+  if(status==="sold" && !(prior && prior.status==="sold")) data.soldAt = now;
+  else if(prior && prior.soldAt) data.soldAt = prior.soldAt;
+
+  if(id){
+    machinesCol.doc(id).update(data).then(function(){
+      toast("Saqlandi","ok"); closeModal("machineModal"); syncToSheet("upsert","machines",id,Object.assign({},prior,data)); syncMachineToCatalog(id, Object.assign({},prior,data));
+    }).catch(function(err){ toast("Xatolik: "+err.message,"err"); });
+  } else {
+    data.createdAt = now; data.seq = Date.now();
+    machinesCol.add(data).then(function(ref){
+      toast("Qo'shildi","ok"); closeModal("machineModal"); syncToSheet("upsert","machines",ref.id,data); syncMachineToCatalog(ref.id, data);
+    }).catch(function(err){ toast("Xatolik: "+err.message,"err"); });
+  }
+});
+$("machineDeleteBtn").addEventListener("click", function(){
+  var id = state.editingMachineId;
+  showConfirm("Mashinani o'chirish","Bu amalni ortga qaytarib bo'lmaydi. Davom etasizmi?", function(){
+    machinesCol.doc(id).delete().then(function(){ toast("O'chirildi","ok"); closeModal("machineModal"); syncToSheet("delete","machines",id,null); catalogMachinesCol.doc(id).delete().catch(function(){}); });
+  });
+});
+
+/* ---- quick sell / band / return ---- */
+function openSoldModal(id){
+  state.soldMachineId=id;
+  var m = state.machines.find(function(x){return x.id===id;});
+  $("s_buyer").value=""; $("s_buyerPhone").value="";
+  $("s_sellPrice").value = m.askPrice!=null?m.askPrice:"";
+  $("s_sellDate").value = todayStr();
+  $("s_note").value="";
+  openModal("soldModal");
+}
+$("soldForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var id = state.soldMachineId;
+  var prior = state.machines.find(function(x){return x.id===id;});
+  var now = new Date().toISOString();
+  var data = {
+    status:"sold",
+    buyer:$("s_buyer").value.trim(), buyerPhone:$("s_buyerPhone").value.trim(),
+    sellPrice:num($("s_sellPrice").value), sellDate:$("s_sellDate").value,
+    sellNote:$("s_note").value.trim(), updatedAt: now,
+    soldAt: (prior && prior.status==="sold" && prior.soldAt) ? prior.soldAt : now
+  };
+  machinesCol.doc(id).update(data).then(function(){
+    toast("Sotildi deb belgilandi","ok"); closeModal("soldModal"); syncToSheet("upsert","machines",id,Object.assign({},prior,data));
+  });
+});
+function quickSetStatus(id, status){
+  machinesCol.doc(id).update({status:status, updatedAt:new Date().toISOString()}).then(function(){
+    toast("Holati yangilandi","ok");
+    var prior = state.machines.find(function(x){return x.id===id;});
+    syncToSheet("upsert","machines",id,Object.assign({},prior,{status:status}));
+  });
+}
+function confirmReturn(id){
+  showConfirm("Mashinani qaytarib olish","Holati qaytadan \"Omborda\" qilinadi, sotuv ma'lumotlari tarix sifatida saqlanadi.", function(){
+    machinesCol.doc(id).update({status:"stock", returnedAt:new Date().toISOString(), updatedAt:new Date().toISOString()}).then(function(){ toast("Qaytarildi","ok"); });
+  });
+}
+
+/* ============================================================
+   PARTS VIEW
+   ============================================================ */
+function filteredParts(){
+  var f = state.ui.parts, q=f.search.toLowerCase();
+  return state.parts.filter(function(p){
+    if(f.category!=="all" && p.category!==f.category) return false;
+    if(f.lowOnly && Number(p.qty) > (p.lowAt!=null?Number(p.lowAt):DEFAULT_LOW_STOCK)) return false;
+    if(q){
+      var hay=((p.name||"")+" "+(p.sku||"")+" "+(p.compat||"")+" "+(p.supplier||"")).toLowerCase();
+      if(hay.indexOf(q)===-1) return false;
+    }
+    return true;
+  });
+}
+function renderPartsView(){
+  var list = filteredParts();
+  var f = state.ui.parts;
+  var catChips = ['all'].concat(Object.keys(PART_CATEGORY)).map(function(c){
+    var label = c==="all" ? "Barchasi" : PART_CATEGORY[c];
+    return '<div class="chip'+(f.category===c?" active":"")+'" data-fcat="'+c+'">'+label+'</div>';
+  }).join("");
+  var lowCount = state.parts.filter(function(p){ return Number(p.qty)<=(p.lowAt!=null?Number(p.lowAt):DEFAULT_LOW_STOCK); }).length;
+
+  var rows = list.map(function(p){
+    var low = Number(p.qty) <= (p.lowAt!=null?Number(p.lowAt):DEFAULT_LOW_STOCK);
+    return '<tr>'+
+      '<td><b>'+esc(p.name)+'</b>'+(p.compat?'<div class="rowSub">'+esc(p.compat)+'</div>':'')+'</td>'+
+      '<td>'+(PART_CATEGORY[p.category]||"—")+'</td>'+
+      '<td class="mono">'+esc(p.sku||"—")+'</td>'+
+      '<td><span class="badge '+(low?"low":"ok")+'">'+p.qty+' dona</span></td>'+
+      '<td class="mono">'+fmtMoney(p.buyPrice)+'</td>'+
+      '<td class="mono">'+fmtMoney(p.askPrice)+'</td>'+
+      '<td><div class="rowActions"><button class="btn sm" data-pedit="'+p.id+'">Tahrir</button><button class="btn sm success" data-psell="'+p.id+'">Sotish</button></div></td>'+
+    '</tr>';
+  }).join("") || '<tr><td colspan="7"><div class="emptyState"><div class="big">⚙️</div>Hech narsa topilmadi</div></td></tr>';
+
+  return ''+
+  '<div class="toolbar">'+
+    '<input class="search field" style="margin:0" id="partSearch" placeholder="Qidirish: nomi, SKU, moslik..." value="'+esc(f.search)+'">'+
+    '<div class="chip'+(f.lowOnly?" active low":"")+'" id="lowOnlyChip">⚠️ Kam qoldiq ('+lowCount+')</div>'+
+  '</div>'+
+  '<div class="chips" style="margin-bottom:14px">'+catChips+'</div>'+
+  '<div class="tableWrap"><table><thead><tr><th>Nomi</th><th>Kategoriya</th><th>SKU</th><th>Miqdor</th><th>Tannarx</th><th>Sotish narxi</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function wirePartsView(){
+  $("partSearch") && $("partSearch").addEventListener("input", function(){ state.ui.parts.search=this.value; render(); });
+  $("lowOnlyChip") && $("lowOnlyChip").addEventListener("click", function(){ state.ui.parts.lowOnly=!state.ui.parts.lowOnly; render(); });
+  qsa("[data-fcat]").forEach(function(el){ el.addEventListener("click", function(){ state.ui.parts.category=el.getAttribute("data-fcat"); render(); }); });
+  qsa("[data-pedit]").forEach(function(el){ el.addEventListener("click", function(){ openPartModal(el.getAttribute("data-pedit")); }); });
+  qsa("[data-psell]").forEach(function(el){ el.addEventListener("click", function(){ openSellPartModal(el.getAttribute("data-psell")); }); });
+}
+
+function openPartModal(id){
+  state.editingPartId=id;
+  var p = id ? state.parts.find(function(x){return x.id===id;}) : null;
+  $("partModalTitle").textContent = p ? "Ehtiyot qismni tahrirlash" : "Yangi ehtiyot qism";
+  $("p_name").value = p? p.name||"" : "";
+  $("p_category").value = p? p.category||"needle" : "needle";
+  $("p_compat").value = p? p.compat||"" : "";
+  $("p_sku").value = p? p.sku||"" : "";
+  $("p_supplier").value = p? p.supplier||"" : "";
+  $("p_qty").value = p? p.qty : 0;
+  $("p_lowAt").value = p? (p.lowAt!=null?p.lowAt:DEFAULT_LOW_STOCK) : DEFAULT_LOW_STOCK;
+  $("p_buyPrice").value = p? (p.buyPrice!=null?p.buyPrice:"") : "";
+  $("p_askPrice").value = p? (p.askPrice!=null?p.askPrice:"") : "";
+  $("p_note").value = p? p.note||"" : "";
+  $("p_showCatalog").checked = p? (p.showCatalog!==false) : true;
+  $("partDeleteBtn").classList.toggle("hidden", !p);
+  openModal("partModal");
+}
+$("partForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var id = state.editingPartId;
+  var now = new Date().toISOString();
+  var data = {
+    name:$("p_name").value.trim(), category:$("p_category").value, compat:$("p_compat").value.trim(),
+    sku:$("p_sku").value.trim(), supplier:$("p_supplier").value.trim(),
+    qty: num($("p_qty").value)||0, lowAt: num($("p_lowAt").value),
+    buyPrice: num($("p_buyPrice").value), askPrice: num($("p_askPrice").value),
+    note:$("p_note").value.trim(), showCatalog:$("p_showCatalog").checked, updatedAt: now
+  };
+  if(id){
+    partsCol.doc(id).update(data).then(function(){ toast("Saqlandi","ok"); closeModal("partModal"); syncToSheet("upsert","parts",id,data); syncPartToCatalog(id,data); });
+  } else {
+    data.createdAt=now; data.seq=Date.now();
+    partsCol.add(data).then(function(ref){ toast("Qo'shildi","ok"); closeModal("partModal"); syncToSheet("upsert","parts",ref.id,data); syncPartToCatalog(ref.id,data); });
+  }
+});
+$("partDeleteBtn").addEventListener("click", function(){
+  var id = state.editingPartId;
+  showConfirm("Ehtiyot qismni o'chirish","Bu amalni ortga qaytarib bo'lmaydi. Davom etasizmi?", function(){
+    partsCol.doc(id).delete().then(function(){ toast("O'chirildi","ok"); closeModal("partModal"); syncToSheet("delete","parts",id,null); catalogPartsCol.doc(id).delete().catch(function(){}); });
+  });
+});
+
+function openSellPartModal(id){
+  state.sellPartId=id;
+  var p = state.parts.find(function(x){return x.id===id;});
+  $("sp_available").textContent = "Mavjud: "+p.qty+" dona — "+esc(p.name);
+  $("sp_qty").value=1; $("sp_qty").max=p.qty;
+  $("sp_price").value = p.askPrice!=null?p.askPrice:"";
+  $("sp_buyer").value=""; $("sp_date").value=todayStr(); $("sp_note").value="";
+  openModal("sellPartModal");
+}
+$("sellPartForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  var id = state.sellPartId;
+  var p = state.parts.find(function(x){return x.id===id;});
+  var qty = num($("sp_qty").value)||0;
+  if(qty<=0){ toast("Miqdorni to'g'ri kiriting","err"); return; }
+  if(qty>p.qty){ toast("Omborda yetarli miqdor yo'q","err"); return; }
+  var unitPrice = num($("sp_price").value)||0;
+  var now = new Date().toISOString();
+  var saleData = {
+    partId:id, partName:p.name, qty:qty, unitSellPrice:unitPrice, unitBuyPriceAtSale: p.buyPrice!=null?p.buyPrice:null,
+    buyer:$("sp_buyer").value.trim(), saleDate:$("sp_date").value, note:$("sp_note").value.trim(),
+    createdAt:now, seq:Date.now()
+  };
+  db.runTransaction(function(tx){
+    var ref = partsCol.doc(id);
+    return tx.get(ref).then(function(doc){
+      var cur = doc.data().qty||0;
+      if(qty>cur) throw new Error("Omborda yetarli miqdor yo'q");
+      tx.update(ref, {qty: cur-qty, updatedAt: now});
+      tx.set(partSalesCol.doc(), saleData);
+    });
+  }).then(function(){
+    toast("Sotildi","ok"); closeModal("sellPartModal");
+    syncToSheet("upsert","parts",id,Object.assign({},p,{qty:p.qty-qty}));
+  }).catch(function(err){ toast("Xatolik: "+err.message,"err"); });
+});
+
+/* ============================================================
+   CATALOG SYNC (public mirror)
+   ============================================================ */
+function syncMachineToCatalog(id, data){
+  if(!data.showCatalog || data.status!=="stock"){ catalogMachinesCol.doc(id).delete().catch(function(){}); return; }
+  catalogMachinesCol.doc(id).set({brand:data.brand||"", type:data.type||"", model:data.model||"", askPrice:data.askPrice!=null?data.askPrice:null, isNew: !!data.isNew, updatedAt:new Date().toISOString()}).catch(function(){});
+}
+function syncPartToCatalog(id, data){
+  if(!data.showCatalog || Number(data.qty)<=0){ catalogPartsCol.doc(id).delete().catch(function(){}); return; }
+  catalogPartsCol.doc(id).set({name:data.name||"", category:data.category||"", askPrice:data.askPrice!=null?data.askPrice:null, inStock:true, updatedAt:new Date().toISOString()}).catch(function(){});
+}
+
+/* ============================================================
+   SHEET SYNC (best-effort, fire-and-forget)
+   ============================================================ */
+function syncToSheet(action, kind, id, data){
+  if(!state.sheetSyncUrl) return;
+  try{
+    fetch(state.sheetSyncUrl, {method:"POST", mode:"no-cors", body:JSON.stringify({action:action, kind:kind, id:id, data:data})});
+  }catch(e){ /* best-effort */ }
+}
+
+/* ============================================================
+   FINANCE
+   ============================================================ */
+function renderFinance(){
+  if(!state.financeUnlocked){
+    return '<div class="card" style="max-width:360px"><h3>Parol kerak</h3><div class="field"><input type="password" id="financePassword" placeholder="Parol"></div><button class="btn primary block" id="financeUnlockBtn">Ochish</button><div class="errMsg" id="financeErr"></div></div>';
+  }
+  var soldMachines = state.machines.filter(function(m){return m.status==="sold";});
+  var machineProfit = soldMachines.reduce(function(a,m){ var p=profitOf(m.buyPrice,m.sellPrice); return a+(p||0); },0);
+  var machineRevenue = soldMachines.reduce(function(a,m){ return a+(m.sellPrice||0); },0);
+  var partsProfit = state.partSales.reduce(function(a,s){ var unitP = (s.unitBuyPriceAtSale!=null)? (s.unitSellPrice-s.unitBuyPriceAtSale) : 0; return a+unitP*s.qty; },0);
+  var partsRevenue = state.partSales.reduce(function(a,s){ return a+s.unitSellPrice*s.qty; },0);
+  var totalProfit = machineProfit+partsProfit;
+  var totalRevenue = machineRevenue+partsRevenue;
+  var stockValue = state.machines.filter(function(m){return m.status==="stock";}).reduce(function(a,m){ return a+(m.buyPrice||0); },0)
+                 + state.parts.reduce(function(a,p){ return a+((p.buyPrice||0)*(p.qty||0)); },0);
+  var lostValue = state.machines.filter(function(m){return m.status==="lost";}).reduce(function(a,m){ return a+(m.buyPrice||0); },0);
+
+  var suppliers={}; state.machines.forEach(function(m){ if(m.source) suppliers[m.source]=(suppliers[m.source]||0)+1; });
+  var topSuppliers = Object.keys(suppliers).sort(function(a,b){return suppliers[b]-suppliers[a];}).slice(0,5);
+  var buyers={}; soldMachines.forEach(function(m){ if(m.buyer) buyers[m.buyer]=(buyers[m.buyer]||0)+1; });
+  var topBuyers = Object.keys(buyers).sort(function(a,b){return buyers[b]-buyers[a];}).slice(0,5);
+
+  return ''+
+  '<div class="kpiGrid">'+
+    '<div class="kpi success"><div class="lbl">Sof foyda</div><div class="val">'+fmtMoney(totalProfit)+'</div></div>'+
+    '<div class="kpi"><div class="lbl">Jami sotuv</div><div class="val">'+fmtMoney(totalRevenue)+'</div></div>'+
+    '<div class="kpi"><div class="lbl">Omborda turgan qiymat</div><div class="val">'+fmtMoney(stockValue)+'</div></div>'+
+    '<div class="kpi danger"><div class="lbl">Yo\'qolgan zarar</div><div class="val">'+fmtMoney(lostValue)+'</div></div>'+
+  '</div>'+
+  '<div class="grid2">'+
+    '<div class="card"><h3>Mashinalar bo\'yicha foyda</h3><div>Foyda: <b class="mono">'+fmtMoney(machineProfit)+'</b></div><div>Sotuv: <b class="mono">'+fmtMoney(machineRevenue)+'</b></div><div style="color:var(--muted); font-size:12px; margin-top:6px">'+soldMachines.length+' ta mashina sotilgan</div></div>'+
+    '<div class="card"><h3>Ehtiyot qismlar bo\'yicha foyda</h3><div>Foyda: <b class="mono">'+fmtMoney(partsProfit)+'</b></div><div>Sotuv: <b class="mono">'+fmtMoney(partsRevenue)+'</b></div><div style="color:var(--muted); font-size:12px; margin-top:6px">'+state.partSales.length+' ta sotuv tranzaksiyasi</div></div>'+
+  '</div>'+
+  '<div class="grid2">'+
+    '<div class="card"><h3>Kimlardan ko\'p sotib olasiz</h3><ul class="rankList">'+(topSuppliers.map(function(s,i){return '<li><span class="n">'+(i+1)+'.</span><span>'+esc(s)+'</span><span class="mono">'+suppliers[s]+'</span></li>';}).join("")||'<li style="color:var(--muted)">Ma\'lumot yo\'q</li>')+'</ul></div>'+
+    '<div class="card"><h3>Kimlar ko\'p sotib oladi</h3><ul class="rankList">'+(topBuyers.map(function(s,i){return '<li><span class="n">'+(i+1)+'.</span><span>'+esc(s)+'</span><span class="mono">'+buyers[s]+'</span></li>';}).join("")||'<li style="color:var(--muted)">Ma\'lumot yo\'q</li>')+'</ul></div>'+
+  '</div>'+
+  '<div class="card"><h3>Hisobotni yuklab olish</h3><button class="btn" id="exportBtn">📥 Excel ga eksport</button></div>';
+}
+function wireFinance(){
+  var unlockBtn = $("financeUnlockBtn");
+  if(unlockBtn){
+    unlockBtn.addEventListener("click", function(){
+      if($("financePassword").value===FINANCE_PASSWORD){ state.financeUnlocked=true; render(); }
+      else $("financeErr").textContent="Parol xato";
+    });
+  }
+  var exportBtn = $("exportBtn");
+  if(exportBtn){
+    exportBtn.addEventListener("click", function(){
+      var wb = XLSX.utils.book_new();
+      var mSheet = XLSX.utils.json_to_sheet(state.machines.map(function(m){
+        return {Brend:m.brand, Model:m.model, Turi:MACHINE_TYPE[m.type], Seriya:m.serial, Holati:MACHINE_STATUS[m.status], SotibOlingan:m.buyPrice, Sotilgan:m.sellPrice, SotibOlinganSana:m.buyDate, SotilganSana:m.sellDate, Kimdan:m.source, Kimga:m.buyer};
+      }));
+      XLSX.utils.book_append_sheet(wb, mSheet, "Mashinalar");
+      var pSheet = XLSX.utils.json_to_sheet(state.parts.map(function(p){
+        return {Nomi:p.name, Kategoriya:PART_CATEGORY[p.category], SKU:p.sku, Miqdor:p.qty, Tannarx:p.buyPrice, SotishNarxi:p.askPrice};
+      }));
+      XLSX.utils.book_append_sheet(wb, pSheet, "Ehtiyot qismlar");
+      XLSX.writeFile(wb, "vip-tikuv-hisobot-"+todayStr()+".xlsx");
+    });
+  }
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+function renderSettings(){
+  return ''+
+  '<div class="card" style="max-width:520px">'+
+    '<h3>Google Sheet sinxronlash (ixtiyoriy)</h3>'+
+    '<div class="field"><label>Apps Script Web App URL</label><input id="sheetUrlInput" value="'+esc(state.sheetSyncUrl)+'" placeholder="https://script.google.com/macros/s/.../exec"></div>'+
+    '<button class="btn primary" id="saveSheetUrlBtn">Saqlash</button>'+
+    '<p style="color:var(--muted); font-size:12.5px; margin-top:12px">SheetSync.gs faylini Google Apps Script\'ga joylab, Web App sifatida deploy qiling va shu yerga exec URL\'ni kiriting. Bu ixtiyoriy — platforma shu bilan ham, shusiz ham ishlaydi.</p>'+
+  '</div>'+
+  '<div class="card" style="max-width:520px"><h3>Ommaviy katalog</h3><p style="color:var(--muted); font-size:13px">Mijozlar uchun faqat ko\'rish mumkin bo\'lgan sahifa: <code class="inline">catalog.html</code>. Narxlar faqat "Mijozlar katalogi" belgisi qo\'yilgan va omborda bor mahsulotlar uchun ko\'rsatiladi.</p></div>';
+}
+function wireSettings(){
+  var btn = $("saveSheetUrlBtn");
+  if(btn) btn.addEventListener("click", function(){
+    db.collection("meta").doc("sheetSync").set({url:$("sheetUrlInput").value.trim(), updatedAt:new Date().toISOString()}).then(function(){ toast("Saqlandi","ok"); });
+  });
+}
+
+/* ============================================================
+   CONFIRM MODAL helper
+   ============================================================ */
+var confirmCallback=null;
+function showConfirm(title, text, cb){
+  $("confirmTitle").textContent=title; $("confirmText").textContent=text;
+  confirmCallback=cb; openModal("confirmModal");
+}
+$("confirmOkBtn").addEventListener("click", function(){
+  closeModal("confirmModal");
+  if(confirmCallback) confirmCallback();
+  confirmCallback=null;
+});
+
+/* ============================================================
+   QR / BARCODE SCAN
+   ============================================================ */
+function parseScannedPayload(text){
+  var m = text.match(/([A-Za-z]{2,10})\s*[:=]\s*([A-Za-z0-9.\-]+)/);
+  if(m) return m[2];
+  var digits = text.match(/\d{8,16}/);
+  if(digits) return digits[0];
+  return text.trim().slice(0,64);
+}
+qsa("[data-scan]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    state.scanTargetInput = btn.getAttribute("data-scan");
+    openModal("scanOverlay");
+    try{
+      var h5 = new Html5Qrcode("scanReader");
+      state.html5QrInstance = h5;
+      h5.start({facingMode:"environment"}, {fps:10, qrbox:220}, function(decoded){
+        $(state.scanTargetInput).value = parseScannedPayload(decoded);
+        h5.stop().then(function(){ closeModal("scanOverlay"); });
+      }, function(){ /* scan failure, ignore per-frame */ });
+    }catch(e){ toast("Kamera ochilmadi: "+e.message,"err"); closeModal("scanOverlay"); }
+  });
+});
+document.querySelector('[data-close="scanOverlay"]').addEventListener("click", function(){
+  if(state.html5QrInstance){ state.html5QrInstance.stop().catch(function(){}); }
+});
+
+/* ============================================================
+   START
+   ============================================================ */
+init();
+})();
+</script>
+</body>
+</html>

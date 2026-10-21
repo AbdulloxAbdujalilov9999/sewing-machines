@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isStaff() {
+      return request.auth != null && request.auth.token.email in [
+        'abdujalilov7707@gmail.com'
+        // , 'add-staff-email-here@gmail.com'
+      ];
+    }
+
+    // Internal inventory — staff only, both read and write.
+    match /machines/{id}   { allow read, write: if isStaff(); }
+    match /parts/{id}      { allow read, write: if isStaff(); }
+    match /partSales/{id}  { allow read, write: if isStaff(); }
+    match /meta/{id}       { allow read, write: if isStaff(); }
+
+    // Public mirrors for the customer-facing catalog.html page:
+    // anyone can read (no login), only staff can write. Only ever
+    // contains the safe fields the app explicitly mirrors — never
+    // cost prices, supplier info, buyer/seller names, or serials.
+    match /catalog_machines/{id} { allow read: if true; allow write: if isStaff(); }
+    match /catalog_parts/{id}    { allow read: if true; allow write: if isStaff(); }
+
+    // Deny everything else by default.
+    match /{document=**} { allow read, write: if false; }
+  }
+}

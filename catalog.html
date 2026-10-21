@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>VIP Tikuv — Mahsulotlar katalogi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#0a0f1c; --surface:#121a2b; --surface2:#182338; --border:#263355; --border2:#324168;
+  --text:#eaf0fb; --muted:#8b97b8; --accent:#4f7cff; --success:#2fbf71; --radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--text); font-family:'Manrope',sans-serif}
+header{position:sticky; top:0; background:var(--surface); border-bottom:1px solid var(--border); padding:14px 18px; display:flex; align-items:center; gap:12px; z-index:10}
+.brandMark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#7aa2ff);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex:none}
+header h1{font-size:15px; margin:0}
+header .call{margin-left:auto; background:var(--success); color:#06281a; padding:8px 14px; border-radius:20px; font-weight:700; font-size:13px; text-decoration:none}
+.wrap{padding:16px 18px 60px; max-width:1100px; margin:0 auto}
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+input#search{flex:1; min-width:200px; background:var(--surface2); border:1px solid var(--border2); color:var(--text); padding:10px 14px; border-radius:20px; outline:none; font-size:14px}
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px}
+.chip{padding:6px 13px; border-radius:20px; font-size:12.5px; font-weight:600; cursor:pointer; background:var(--surface2); border:1px solid var(--border2); color:var(--muted)}
+.chip.active{background:var(--accent); border-color:var(--accent); color:#fff}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px}
+.card .cat{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; font-weight:700; margin-bottom:6px}
+.card .name{font-weight:700; font-size:15px; margin-bottom:8px; line-height:1.3}
+.card .price{font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:700; color:var(--success)}
+.card .price.ask{color:var(--muted); font-size:13px; font-weight:500}
+.badgeNew{background:#1c2a52; color:var(--accent); font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; margin-left:6px}
+.empty{text-align:center; color:var(--muted); padding:60px 20px}
+footer{text-align:center; color:var(--muted); font-size:12px; padding:24px 18px; border-top:1px solid var(--border)}
+footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <span class="brandMark">VT</span>
+  <h1>VIP Tikuv — mavjud mahsulotlar</h1>
+  <a class="call" href="tel:+998000000000">📞 Qo'ng'iroq qilish</a>
+</header>
+<div class="wrap">
+  <div class="toolbar"><input id="search" placeholder="Qidirish..."></div>
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"><div class="empty">Yuklanmoqda...</div></div>
+</div>
+<footer>
+  Narxlar o'zgarishi mumkin. Buyurtma shu yerda rasmiylashtirilmaydi — faqat mavjudlikni ko'rsatadi, xarid qilish uchun qo'ng'iroq qiling.<br>
+  <a href="index.html">Xodimlar uchun kirish</a>
+</footer>
+
+<script>
+(function(){
+"use strict";
+var FIREBASE_CONFIG = {
+  apiKey: "REPLACE_WITH_API_KEY",
+  authDomain: "REPLACE_WITH_PROJECT_ID.firebaseapp.com",
+  projectId: "REPLACE_WITH_PROJECT_ID",
+  storageBucket: "REPLACE_WITH_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_WITH_SENDER_ID",
+  appId: "REPLACE_WITH_APP_ID"
+};
+var CATEGORY_LABELS = {
+  household:"Maishiy mashina", industrial:"Sanoat mashinasi", overlock:"Overlok", embroidery:"Kashtachi", coverstitch:"Trikotaj", other:"Boshqa mashina",
+  needle:"Igna", bobbin:"Shpulka/moynak", belt:"Kamar", motor:"Motor", foot:"Oyoqcha", pedal:"Pedal", plate:"Plastinka", bulb:"Lampochka", oil:"Moy", thread:"Ip", cable:"Kabel"
+};
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+
+if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf("REPLACE_WITH")===0){
+  document.getElementById("grid").innerHTML = '<div class="empty">Katalog hali sozlanmagan. index.html faylidagi FIREBASE_CONFIG\'ni to\'ldiring.</div>';
+  return;
+}
+firebase.initializeApp(FIREBASE_CONFIG);
+var db = firebase.firestore();
+var items = []; // {source:'machine'|'part', ...}
+
+function render(){
+  var q = document.getElementById("search").value.toLowerCase();
+  var cats = {}; items.forEach(function(i){ cats[i.category]=true; });
+  var chipsHtml = ['<div class="chip'+(state.cat==="all"?" active":"")+'" data-c="all">Barchasi</div>'].concat(Object.keys(cats).map(function(c){
+    return '<div class="chip'+(state.cat===c?" active":"")+'" data-c="'+c+'">'+(CATEGORY_LABELS[c]||c)+'</div>';
+  })).join("");
+  document.getElementById("chips").innerHTML = chipsHtml;
+  Array.prototype.slice.call(document.querySelectorAll("[data-c]")).forEach(function(el){
+    el.addEventListener("click", function(){ state.cat=el.getAttribute("data-c"); render(); });
+  });
+
+  var list = items.filter(function(i){
+    if(state.cat!=="all" && i.category!==state.cat) return false;
+    if(q && i.name.toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+  var grid = document.getElementById("grid");
+  if(!list.length){ grid.innerHTML='<div class="empty">Hech narsa topilmadi</div>'; return; }
+  grid.innerHTML = list.map(function(i){
+    var price = i.askPrice!=null ? '<div class="price">$'+Number(i.askPrice).toLocaleString("en-US")+'</div>' : '<div class="price ask">Narx so\'rov bilan</div>';
+    return '<div class="card"><div class="cat">'+(CATEGORY_LABELS[i.category]||i.category)+'</div><div class="name">'+esc(i.name)+(i.isNew?'<span class="badgeNew">Yangi</span>':'')+'</div>'+price+'</div>';
+  }).join("");
+}
+var state = {cat:"all"};
+document.getElementById("search").addEventListener("input", render);
+
+db.collection("catalog_machines").onSnapshot(function(snap){
+  var machines = snap.docs.map(function(d){ var v=d.data(); return {id:d.id, source:"machine", category:v.type||"other", name:(v.brand||"")+" "+(v.model||""), askPrice:v.askPrice, isNew:v.isNew}; });
+  items = items.filter(function(i){return i.source!=="machine";}).concat(machines);
+  render();
+});
+db.collection("catalog_parts").onSnapshot(function(snap){
+  var parts = snap.docs.map(function(d){ var v=d.data(); return {id:d.id, source:"part", category:v.category||"other", name:v.name||"", askPrice:v.askPrice, isNew:false}; });
+  items = items.filter(function(i){return i.source!=="part";}).concat(parts);
+  render();
+});
+})();
+</script>
+</body>
+</html>
