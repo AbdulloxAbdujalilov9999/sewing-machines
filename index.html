@@ -62,7 +62,7 @@ h1 .ic,h3 .ic{vertical-align:-3px; margin-right:2px}
 .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600}
 .field input,.field select,.field textarea{
   width:100%; background:var(--surface2); border:1px solid var(--border2); color:var(--text);
-  padding:10px 12px; border-radius:var(--radius-sm); font-size:14px; outline:none;
+  padding:10px 12px; border-radius:var(--radius-sm); font-size:16px; outline:none;
 }
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
 .btn{
@@ -224,8 +224,43 @@ tbody tr:hover{background:var(--surface2)}
   .sidebar-backdrop.open{display:block}
   .mobileTopbar{display:flex}
   .topbar{padding:16px 16px 0}
+  .topbar #pageActions{width:100%}
+  .topbar #pageActions .btn{width:100%; justify-content:center; padding:12px}
   .content{padding:14px 16px 60px}
   .kpiGrid{grid-template-columns:repeat(2,1fr)}
+
+  /* Tables become stacked cards — a wide multi-column table with the
+     action buttons scrolled off-screen is unusable on a phone. */
+  .tableWrap{overflow-x:visible; background:none; border:none}
+  .tableWrap table{min-width:0; width:100%}
+  .tableWrap thead{display:none}
+  .tableWrap tbody{display:block}
+  .tableWrap tr{
+    display:block; background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:12px 14px; margin-bottom:10px;
+  }
+  .tableWrap tr.groupDivider{
+    background:none; border:none; padding:2px 2px; margin:16px 0 8px;
+  }
+  .tableWrap tr.groupDivider td{display:block; padding:0; border:none}
+  .tableWrap td{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:7px 0; border-bottom:1px solid var(--border); text-align:right;
+  }
+  .tableWrap tr:last-child td, .tableWrap td:last-child{border-bottom:none}
+  .tableWrap td[data-label]::before{
+    content:attr(data-label); color:var(--muted); font-size:11.5px; font-weight:700;
+    text-align:left; flex:none;
+  }
+  .tableWrap td .cellVal{display:block}
+  .tableWrap td.cellTitle{
+    display:block; text-align:left; padding:0 0 10px; margin-bottom:6px;
+    border-bottom:1px solid var(--border); font-size:14.5px;
+  }
+  .tableWrap td.cellActions{display:block; text-align:left; padding-top:10px; border-bottom:none}
+  .tableWrap td.cellActions .rowActions .btn.sm{padding:9px 12px; font-size:13px}
+  .tableWrap td.colIndex{display:none}
+  .tableWrap td.cellEmpty{display:block; padding:0; border-bottom:none}
 }
 </style>
 </head>
@@ -799,7 +834,7 @@ function renderMachinesView(onlyNew){
 
   var rowsHtml;
   if(!list.length){
-    rowsHtml = '<tr><td colspan="7"><div class="emptyState"><div class="big">'+ic("scissors")+'</div>Hech narsa topilmadi</div></td></tr>';
+    rowsHtml = '<tr><td class="cellEmpty" colspan="7"><div class="emptyState"><div class="big">'+ic("scissors")+'</div>Hech narsa topilmadi</div></td></tr>';
   } else {
     // group: not sold/lent first, then Band divider, then Sotilgan divider
     var main = list.filter(function(m){return m.status!=="lent" && m.status!=="sold";});
@@ -833,14 +868,14 @@ function machineRow(m, idx){
     (m.status==="sold" ? '<button class="btn sm" data-return="'+m.id+'">'+ic("corner-up-left")+' Qaytarib olindi</button>' : '')+
   '</div>';
   return '<tr>'+
-    '<td class="mono" style="color:var(--muted)">'+(idx!=null?idx:"")+'</td>'+
-    '<td>'+ic("scissors")+' <b>'+esc(m.brand||"")+' '+esc(m.model||"")+'</b>'+(m.isNew?'<span class="tagNew">Yangi</span>':'')+'</td>'+
-    '<td class="mono">'+esc(m.serial||"—")+'</td>'+
-    '<td class="mono">'+price+'</td>'+
-    '<td><span class="badge '+(m.status==="lent"?"lent":m.status)+'">'+ic(MACHINE_STATUS_ICON[m.status],"ic-sm")+' '+MACHINE_STATUS[m.status]+'</span></td>'+
-    '<td>'+esc(m.source||"—")+'<div class="rowSub">'+fmtDate(m.buyDate)+'</div></td>'+
-    '<td>'+buyerCell+'</td>'+
-    '<td>'+actions+'</td>'+
+    '<td class="mono colIndex" style="color:var(--muted)">'+(idx!=null?idx:"")+'</td>'+
+    '<td class="cellTitle">'+ic("scissors")+' <b>'+esc(m.brand||"")+' '+esc(m.model||"")+'</b>'+(m.isNew?'<span class="tagNew">Yangi</span>':'')+'</td>'+
+    '<td class="mono" data-label="Seriya"><span class="cellVal">'+esc(m.serial||"—")+'</span></td>'+
+    '<td class="mono" data-label="Narx"><span class="cellVal">'+price+'</span></td>'+
+    '<td data-label="Holati"><span class="cellVal"><span class="badge '+(m.status==="lent"?"lent":m.status)+'">'+ic(MACHINE_STATUS_ICON[m.status],"ic-sm")+' '+MACHINE_STATUS[m.status]+'</span></span></td>'+
+    '<td data-label="Sotib olindi"><span class="cellVal">'+esc(m.source||"—")+'<div class="rowSub">'+fmtDate(m.buyDate)+'</div></span></td>'+
+    '<td data-label="Kimga sotildi"><span class="cellVal">'+buyerCell+'</span></td>'+
+    '<td class="cellActions">'+actions+'</td>'+
   '</tr>';
 }
 function wireMachinesView(){
@@ -1003,15 +1038,15 @@ function renderPartsView(){
   var rows = list.map(function(p){
     var low = Number(p.qty) <= (p.lowAt!=null?Number(p.lowAt):DEFAULT_LOW_STOCK);
     return '<tr>'+
-      '<td><b>'+esc(p.name)+'</b>'+(p.compat?'<div class="rowSub">'+esc(p.compat)+'</div>':'')+'</td>'+
-      '<td>'+iconForCategory(p.category)+' '+esc(p.category||"—")+'</td>'+
-      '<td class="mono">'+esc(p.sku||"—")+'</td>'+
-      '<td><span class="badge '+(low?"low":"ok")+'">'+p.qty+' dona</span></td>'+
-      '<td class="mono">'+fmtMoney(p.buyPrice)+'</td>'+
-      '<td class="mono">'+fmtMoney(p.askPrice)+'</td>'+
-      '<td><div class="rowActions"><button class="btn sm" data-pedit="'+p.id+'">'+ic("pencil")+' Tahrir</button><button class="btn sm success" data-psell="'+p.id+'">'+ic("dollar-sign")+' Sotish</button></div></td>'+
+      '<td class="cellTitle"><b>'+esc(p.name)+'</b>'+(p.compat?'<div class="rowSub">'+esc(p.compat)+'</div>':'')+'</td>'+
+      '<td data-label="Kategoriya"><span class="cellVal">'+iconForCategory(p.category)+' '+esc(p.category||"—")+'</span></td>'+
+      '<td class="mono" data-label="SKU"><span class="cellVal">'+esc(p.sku||"—")+'</span></td>'+
+      '<td data-label="Miqdor"><span class="cellVal"><span class="badge '+(low?"low":"ok")+'">'+p.qty+' dona</span></span></td>'+
+      '<td class="mono" data-label="Tannarx"><span class="cellVal">'+fmtMoney(p.buyPrice)+'</span></td>'+
+      '<td class="mono" data-label="Sotish narxi"><span class="cellVal">'+fmtMoney(p.askPrice)+'</span></td>'+
+      '<td class="cellActions"><div class="rowActions"><button class="btn sm" data-pedit="'+p.id+'">'+ic("pencil")+' Tahrir</button><button class="btn sm success" data-psell="'+p.id+'">'+ic("dollar-sign")+' Sotish</button></div></td>'+
     '</tr>';
-  }).join("") || '<tr><td colspan="7"><div class="emptyState"><div class="big">'+ic("wrench")+'</div>Hech narsa topilmadi</div></td></tr>';
+  }).join("") || '<tr><td class="cellEmpty" colspan="7"><div class="emptyState"><div class="big">'+ic("wrench")+'</div>Hech narsa topilmadi</div></td></tr>';
 
   return ''+
   '<div class="toolbar">'+
