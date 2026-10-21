@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/lucide@1.61.0/dist/umd/lucide.js"></script>
 <style>
 :root{
   --bg:#0a0f1c; --surface:#121a2b; --surface2:#182338; --border:#263355; --border2:#324168;
@@ -32,6 +33,9 @@ input#search{flex:1; min-width:200px; background:var(--surface2); border:1px sol
 .card .price{font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:700; color:var(--success)}
 .card .price.ask{color:var(--muted); font-size:13px; font-weight:500}
 .badgeNew{background:#1c2a52; color:var(--accent); font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; margin-left:6px}
+.ic{width:14px; height:14px; flex:none; vertical-align:-2px; display:inline-block}
+.card .cat .ic{margin-right:3px}
+header .call .ic{vertical-align:-2px; margin-right:4px}
 .empty{text-align:center; color:var(--muted); padding:60px 20px}
 footer{text-align:center; color:var(--muted); font-size:12px; padding:24px 18px; border-top:1px solid var(--border)}
 footer a{color:var(--accent)}
@@ -41,7 +45,7 @@ footer a{color:var(--accent)}
 <header>
   <span class="brandMark">VT</span>
   <h1>VIP Tikuv — mavjud mahsulotlar</h1>
-  <a class="call" href="tel:+998000000000">📞 Qo'ng'iroq qilish</a>
+  <a class="call" href="tel:+998000000000"><i data-lucide="phone" class="ic"></i> Qo'ng'iroq qilish</a>
 </header>
 <div class="wrap">
   <div class="toolbar"><input id="search" placeholder="Qidirish..."></div>
@@ -65,19 +69,8 @@ var FIREBASE_CONFIG = {
   appId: "1:714118686831:web:1ecf74960bb83ee280c59a",
   measurementId: "G-3EK40J0228"
 };
-var PART_ICON_RULES = [
-  [/igna/i, "🪡"], [/\bip\b|shoyi/i, "🧵"], [/shpulka|moynak|bobbin/i, "🧶"],
-  [/kamar|tasma|belt/i, "🔗"], [/motor/i, "⚙️"], [/oyoqcha|presser|foot/i, "👣"],
-  [/pedal/i, "🦿"], [/plastinka|ignabar|plate/i, "🔲"], [/lampochka|lamp|bulb/i, "💡"],
-  [/moy|oil/i, "🛢️"], [/kabel|sim|cable/i, "🔌"], [/tugma|knop|button/i, "🔘"],
-  [/fermuar|zip/i, "🤐"]
-];
-function iconFor(source, cat){
-  if(source==="machine") return "🧵";
-  var s = String(cat||"");
-  for(var i=0;i<PART_ICON_RULES.length;i++){ if(PART_ICON_RULES[i][0].test(s)) return PART_ICON_RULES[i][1]; }
-  return "🧩";
-}
+function ic(name, cls){ return '<i data-lucide="'+name+'" class="ic'+(cls?' '+cls:'')+'"></i>'; }
+function iconFor(source, cat){ return ic(source==="machine" ? "scissors" : "tag"); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 
 if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.indexOf("REPLACE_WITH")===0){
@@ -91,7 +84,7 @@ var items = []; // {source:'machine'|'part', ...}
 function render(){
   var q = document.getElementById("search").value.toLowerCase();
   var cats = {}; items.forEach(function(i){ cats[i.category]=true; });
-  var chipsHtml = ['<div class="chip'+(state.cat==="all"?" active":"")+'" data-c="all">🧩 Barchasi</div>'].concat(Object.keys(cats).sort().map(function(c){
+  var chipsHtml = ['<div class="chip'+(state.cat==="all"?" active":"")+'" data-c="all">'+ic("layout-grid")+' Barchasi</div>'].concat(Object.keys(cats).sort().map(function(c){
     var item = items.filter(function(i){return i.category===c;})[0];
     return '<div class="chip'+(state.cat===c?" active":"")+'" data-c="'+esc(c)+'">'+iconFor(item?item.source:"", c)+' '+esc(c)+'</div>';
   })).join("");
@@ -106,11 +99,15 @@ function render(){
     return true;
   });
   var grid = document.getElementById("grid");
-  if(!list.length){ grid.innerHTML='<div class="empty">Hech narsa topilmadi</div>'; return; }
-  grid.innerHTML = list.map(function(i){
-    var price = i.askPrice!=null ? '<div class="price">$'+Number(i.askPrice).toLocaleString("en-US")+'</div>' : '<div class="price ask">Narx so\'rov bilan</div>';
-    return '<div class="card"><div class="cat">'+iconFor(i.source,i.category)+' '+esc(i.category)+'</div><div class="name">'+esc(i.name)+(i.isNew?'<span class="badgeNew">Yangi</span>':'')+'</div>'+price+'</div>';
-  }).join("");
+  if(!list.length){
+    grid.innerHTML='<div class="empty">Hech narsa topilmadi</div>';
+  } else {
+    grid.innerHTML = list.map(function(i){
+      var price = i.askPrice!=null ? '<div class="price">$'+Number(i.askPrice).toLocaleString("en-US")+'</div>' : '<div class="price ask">Narx so\'rov bilan</div>';
+      return '<div class="card"><div class="cat">'+iconFor(i.source,i.category)+' '+esc(i.category)+'</div><div class="name">'+esc(i.name)+(i.isNew?'<span class="badgeNew">Yangi</span>':'')+'</div>'+price+'</div>';
+    }).join("");
+  }
+  if(window.lucide) lucide.createIcons();
 }
 var state = {cat:"all"};
 document.getElementById("search").addEventListener("input", render);
