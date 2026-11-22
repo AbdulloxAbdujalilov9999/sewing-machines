@@ -30,7 +30,7 @@ Telefon do'koni uchun qurilgan "1C" platformasi (`vipmobile-sales` / `vip-mobile
 Google Sheets sinxronlash va ommaviy katalog ikkisi ham **ixtiyoriy** — ularsiz ham platforma to'liq ishlaydi.
 
 ### Ommaviy katalog (ixtiyoriy)
-`catalog.html`'dagi `tel:+998000000000` raqamini o'zingizning haqiqiy raqamingizga almashtiring. Ushbu sahifani mijozlarga xavfsiz tarqatish mumkin — login talab qilmaydi, faqat "Mijozlar katalogida ko'rsatilsin" belgisi qo'yilgan va omborda mavjud bo'lgan mahsulotlarning narxi va nomi ko'rinadi (tannarx, ta'minotchi, seriya raqami hech qachon ko'rinmaydi).
+`catalog.html`'dagi qo'ng'iroq tugmasi `+998 88 338 20 30` raqamiga sozlangan. Ushbu sahifani mijozlarga xavfsiz tarqatish mumkin — login talab qilmaydi, faqat "Mijozlar katalogida ko'rsatilsin" belgisi qo'yilgan va omborda mavjud bo'lgan mahsulotlarning narxi va nomi ko'rinadi (tannarx, ta'minotchi, seriya raqami hech qachon ko'rinmaydi).
 
 ### Google Sheets sinxronlash (ixtiyoriy)
 `SheetSync.gs`'ni Google Sheets → Extensions → Apps Script orqali joylang, Web App sifatida deploy qiling, exec URL'ni ilova ichidagi **Sozlamalar** bo'limiga kiriting.
